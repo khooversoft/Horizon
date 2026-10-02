@@ -1,0 +1,102 @@
+﻿@implements IDisposable
+@inject NavigationManager _nav
+
+<div class="tool-page-menu-item @(_isActive ? "active" : null) @Class"
+     style="@Style"
+     role="button"
+     tabindex="0"
+     @onclick="HandleClickAsync">
+
+    <span class="tool-page-menu-item-active-bar"></span>
+
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <MudIcon Icon="@Icon" Class="tool-page-menu-item-icon" />
+    }
+
+    <span class="tool-page-menu-item-content">
+        @if (ChildContent is not null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            <span class="tool-page-menu-item-text">@Text</span>
+
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <span class="tool-page-menu-item-description">@Description</span>
+            }
+        }
+    </span>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public bool AppendReturnUrl { get; set; }
+    [Parameter] public NavLinkMatch Match { get; set; } = NavLinkMatch.Prefix;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+
+    private bool _isActive;
+
+    protected override void OnInitialized()
+    {
+        _nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override void OnParametersSet() => UpdateActiveState();
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (UpdateActiveState())
+        {
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task HandleClickAsync()
+    {
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync();
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(Href))
+        {
+            var target = AppendReturnUrl
+                ? QueryHelpers.AddQueryString(Href, "returnUrl", _nav.Uri)
+                : Href;
+
+            _nav.NavigateTo(target);
+        }
+    }
+
+    // Returns true when the active state changed.
+    private bool UpdateActiveState()
+    {
+        var wasActive = _isActive;
+
+        if (string.IsNullOrEmpty(Href))
+        {
+            _isActive = false;
+        }
+        else
+        {
+            _isActive = _nav.IsUrlActive(Href, Match);
+        }
+
+        return wasActive != _isActive;
+    }
+
+    public void Dispose()
+    {
+        _nav.LocationChanged -= OnLocationChanged;
+    }
+}

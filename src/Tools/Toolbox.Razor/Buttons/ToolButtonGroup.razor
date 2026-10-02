@@ -1,0 +1,29 @@
+﻿<div style="@_style">
+
+    @ChildContent
+
+</div>
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public WidthSize Size { get; set; } = WidthSize.Full;
+
+    private string _width = null!;
+    private string _style = null!;
+
+    protected override void OnParametersSet()
+    {
+        _width = Size switch
+        {
+            WidthSize.Full => "6rem",
+            WidthSize.Form => "3.7rem",
+            _ => throw new ArgumentException(),
+        };
+
+        // Two columns max (each button fills 1/2 of the width minus half the gap).
+        // calc(50% - 4px) caps the grid at 2 columns; a 3rd can never fit.
+        // max(_width, ...) forces a single vertical column once the panel is
+        // narrower than the button min-width (Fluent-style wrap to vertical).
+        _style = $"display: grid; grid-template-columns: repeat(auto-fit, minmax(max({_width}, calc(50% - 4px)), 1fr)); gap: 8px; padding: 2px 0px;";
+    }
+}

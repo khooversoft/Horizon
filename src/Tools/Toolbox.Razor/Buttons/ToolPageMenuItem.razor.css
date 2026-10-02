@@ -1,0 +1,71 @@
+/* CSS for ToolPageMenuItem component.
+   The item is a self-contained element (no MudNavLink), so the background is
+   driven purely by the .active class and :hover. Nothing lingers between
+   navigations because there is no focus/ripple state to retain. */
+
+.tool-page-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    background-color: var(--tool-background-color-menu);
+    color: var(--mud-palette-text-primary);
+    transition: background-color .15s ease;
+}
+
+/* Hover only affects the item currently pointed at. */
+.tool-page-menu-item:hover {
+    background-color: var(--mud-palette-action-default-hover, rgba(0, 0, 0, 0.04));
+}
+
+/* Active state does not change the background; it is indicated by the
+   active bar and the bold text below. */
+.tool-page-menu-item.active .tool-page-menu-item-text,
+.tool-page-menu-item.active .tool-page-menu-item-icon {
+    color: var(--mud-palette-secondary);
+}
+
+.tool-page-menu-item.active .tool-page-menu-item-text {
+    font-weight: 700;
+}
+
+/* 2px vertical accent bar on the left of the item, sitting between the left
+   edge and the start icon. It is always rendered (transparent when inactive)
+   so the icon and text keep the same position whether or not the item is
+   active. The negative right margin collapses the 12px flex gap down to a
+   2px gap next to the icon. */
+.tool-page-menu-item-active-bar {
+    width: 2px;
+    align-self: stretch;
+    margin: 5px -10px 5px 0;
+    background-color: transparent;
+}
+
+.tool-page-menu-item.active .tool-page-menu-item-active-bar {
+    background-color: var(--tool-background-color-menu-select-bar);
+}
+
+.tool-page-menu-item-icon {
+    color: var(--mud-palette-secondary);
+}
+
+.tool-page-menu-item-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.tool-page-menu-item-text {
+    font-size: .8rem;
+    font-weight: 400;
+}
+
+.tool-page-menu-item-description {
+    font-size: .7rem;
+    font-weight: 400;
+    color: var(--mud-palette-text-secondary);
+}

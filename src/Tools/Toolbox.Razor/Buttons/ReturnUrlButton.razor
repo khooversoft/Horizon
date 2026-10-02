@@ -1,0 +1,19 @@
+﻿@inject NavigationManager _nav
+
+@if (_targetHref.IsNotEmpty())
+{
+    <ToolButton StartIcon="@Icons.Material.Outlined.ArrowLeft" Href="@_targetHref" Variant="@Variant.Text">Back</ToolButton>
+}
+
+@code {
+    [Parameter] public string? Href { get; set; }
+
+    private string? _targetHref;
+
+    protected override void OnParametersSet()
+    {
+        _targetHref = GetReturnUrlFromUri() ?? Href;
+    }
+
+    private string? GetReturnUrlFromUri() => _nav.GetReturnUrlFromUri();
+}

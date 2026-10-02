@@ -1,0 +1,34 @@
+﻿@if (Show)
+{
+    <MudSelect T="string"
+               Value="@CurrentValue"
+               ValueChanged="@OnClick"
+               Disabled="@Disabled"
+               Dense="false"
+               Variant="Variant.Text"
+               Margin="Margin.Dense"
+               Label="@Title"
+               Style="@GetStyle()">
+
+        @foreach (var option in Options)
+        {
+            <MudSelectItem Value="@option.Key">@option.Value</MudSelectItem>
+        }
+    </MudSelect>
+}
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public IReadOnlyList<KeyValue<string>> Options { get; set; } = [];
+    [Parameter] public EventCallback<string> OnClick { get; set; }
+    [Parameter] public string? CurrentValue { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? MaxWidth { get; set; }
+    [Parameter] public bool Show { get => OnClick.HasDelegate && field; set; } = true;
+
+    private string GetStyle() => MaxWidth switch
+    {
+        null => "min-width:120px;margin: 0px 5px;",
+        string v => $"min-width:120px;max-width:{v};margin: 0px 5px;"
+    };
+}

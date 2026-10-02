@@ -1,0 +1,148 @@
+﻿@inject ISnackbar _snackbar;
+
+<MudDrawer Open="@Open" OpenChanged=@OnClose Anchor="Anchor.End" Elevation="1" Variant="@DrawerVariant.Temporary" OverlayAutoClose=true Width="60%">
+    <MudDrawerHeader>
+        <MudText Typo="Typo.h6">@GetTitle()</MudText>
+    </MudDrawerHeader>
+    <MudDrawerContainer>
+        <MudStack Spacing="2" Style="margin:10px">
+            <Toolbar>
+                <ToolbarButton Variant="ToolbarVariant.Upload" OnClick="@OnUpload" Disabled="@GetUploadDisable()" />
+                <ToolbarButton Variant="ToolbarVariant.Clear" OnClick="@OnClear" Disabled="@GetUploadDisable()" />
+                <ToolbarButton Variant="ToolbarVariant.Close" OnClick="@OnClose" />
+            </Toolbar>
+
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <MudStack Row="true" Style="width:100%" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.h6">Drag and Drop</MudText>
+                        <MudSpacer />
+
+                        <div style="width:200px">
+                            <MudFileUpload @bind-Files="@_files"
+                                           @bind-Files:after="StateHasChanged"
+                                           DragAndDrop="true"
+                                           AppendMultipleFiles="true"
+                                           Disabled="@_uploading">
+                                <CustomContent>
+                                    <MudButton Variant="Variant.Filled"
+                                               OnClick="@context.OpenFilePickerAsync"
+                                               Color="Color.Info">
+                                        Browse local computer
+                                    </MudButton>
+                                </CustomContent>
+                                <SelectedTemplate />
+                            </MudFileUpload>
+                        </div>
+                    </MudStack>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudStack Spacing="2">
+                        <MudFileUpload @bind-Files="@_files"
+                                       @bind-Files:after="StateHasChanged"
+                                       DragAndDrop="true"
+                                       AppendMultipleFiles="true"
+                                       Disabled="@_uploading">
+                            <SelectedTemplate />
+                        </MudFileUpload>
+
+                        <MudCheckBox @bind-Value="_overwriteFile" Label="Overwrite existing files" LabelPlacement="Placement.Right" />
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+
+            <MudDataGrid T="IBrowserFile"
+                         Items="@_files"
+                         ReadOnly="true"
+                         Dense="true"
+                         Bordered="true">
+                <Columns>
+                    <TemplateColumn CellStyle="width: 1%; white-space: nowrap;" HeaderStyle="width: 1%; white-space: nowrap;">
+                        <CellTemplate>
+                            <MudIconButton Color="Color.Error" Size="@Size.Small" Icon="@Icons.Material.Outlined.Delete" OnClick="@(() => DeleteItem(context.Item))" />
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.Name" Title="Name" />
+                    <PropertyColumn Property="x => x.GetSizeK()" Title="Size" CellStyle="width: 1%; white-space: nowrap;" HeaderStyle="width: 1%; white-space: nowrap;" />
+                </Columns>
+            </MudDataGrid>
+
+        </MudStack>
+    </MudDrawerContainer>
+    <MudDivider />
+</MudDrawer>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string Description { get; set; } = null!;
+    [Parameter] public string BasePath { get; set; } = null!;
+    [Parameter] public IFileStore FileStore { get; set; } = null!;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private IReadOnlyList<IBrowserFile> _files = [];
+    private bool _overwriteFile = false;
+    private string GetTitle() => Description is not null ? Description : "Upload File";
+
+    private bool _uploading = false;
+    private bool GetUploadDisable() => _files.Count == 0 || _uploading;
+
+    protected override void OnParametersSet()
+    {
+        FileStore.NotNull();
+
+        _uploading = false;
+        _files = [];
+        base.OnParametersSet();
+    }
+
+    private async Task OnUpload()
+    {
+        if (_files.Count == 0) return;
+
+        _uploading = true;
+        StateHasChanged();
+
+        foreach (var file in _files)
+        {
+            string path = BasePath.ToNullIfEmpty() switch
+            {
+                null => file.Name,
+                string => $"{BasePath}/{file.Name}"
+            };
+
+            using var readStream = file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024);
+            using var memoryStream = new MemoryStream((int)file.Size);
+            await readStream.CopyToAsync(memoryStream);
+
+            byte[] array = memoryStream.ToArray();
+            DataETag dataETag = array.ToDataETag();
+
+            var option = _overwriteFile switch
+            {
+                false => await FileStore.Add(path, dataETag),
+                true => await FileStore.Upsert(path, dataETag)
+            };
+
+            if (option.IsError())
+            {
+                _snackbar.Add($"File {file.Name} already exist", Severity.Error);
+                continue;
+            }
+
+            _snackbar.Add($"{file.Name} file up loaded to {BasePath}", Severity.Success);
+        }
+
+        await OnClose.InvokeAsync();
+    }
+
+    private void OnClear()
+    {
+        _files = [];
+        StateHasChanged();
+    }
+
+    private void DeleteItem(IBrowserFile file)
+    {
+        _files = _files.Where(f => f != file).ToList();
+    }
+}

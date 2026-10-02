@@ -1,0 +1,40 @@
+﻿<MudCard Square="true"
+         Elevation="4"
+         @onclick="OnClick"
+         Style="@CardStyle">
+    <MudCardContent Style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <MudStack Spacing="4">
+            <MudIcon Icon="@Icon"
+                     Size="Size.Large"
+                     Color="Color.Primary"
+                     Style="text-align: center; width: 100%; line-height: 1.15;" />
+
+            <MudText Typo="Typo.h6"
+                     Style="text-align: center; width: 100%; line-height: 1.15; white-space: normal;">
+                @Title
+            </MudText>
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    @inject NavigationManager _navigation;
+    [Parameter] public string Icon { get; set; } = null!;
+    [Parameter] public string Title { get; set; } = null!;
+    [Parameter] public string? Href { get; set; } = null!;
+    [Parameter] public bool Disabled { get; set; }
+
+    private string CardStyle => Disabled
+        ? "width: 150px; min-width:150px; height: 150px; min-height: 150px; cursor: not-allowed; opacity: 0.5; filter: grayscale(1);"
+        : "width: 150px; min-width:150px; height: 150px; min-height: 150px; cursor: pointer;";
+
+    private void OnClick()
+    {
+        if (Disabled) return;
+
+        if (Href.IsNotEmpty())
+        {
+            _navigation.NavigateTo(Href);
+        }
+    }
+}

@@ -1,0 +1,143 @@
+﻿using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
+
+namespace Toolbox.Tools;
+
+/// <summary>
+/// Provides JSON services using System.Text.Json
+/// </summary>
+public class Json
+{
+    public static Json Default { get; } = new Json();
+
+    // Use consistent document options for JsonNode.Parse to match serializer tolerance
+    private static readonly JsonDocumentOptions s_docOptions = new JsonDocumentOptions
+    {
+        CommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+    };
+
+    // Default resolver required before calling MakeReadOnly() on JsonSerializerOptions in .NET 8+
+    private static readonly IJsonTypeInfoResolver s_resolver = new DefaultJsonTypeInfoResolver();
+
+    public static JsonSerializerOptions JsonSerializerFormatOption { get; } = CreateIndentedOptions();
+    public static JsonSerializerOptions JsonSerializerOptions { get; } = CreateDefaultOptions();
+    public static JsonSerializerOptions PascalOptions { get; } = CreatePascalOptions();
+
+    private static JsonSerializerOptions CreateDefaultOptions()
+    {
+        var o = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            Converters =
+            {
+                new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: true),
+                new ImmutableByteArrayConverter(),
+            },
+            TypeInfoResolver = s_resolver,
+        };
+        o.MakeReadOnly();
+        return o;
+    }
+
+    private static JsonSerializerOptions CreateIndentedOptions()
+    {
+        var o = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = true,
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            Converters =
+            {
+                new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: true),
+                new ImmutableByteArrayConverter(),
+            },
+            TypeInfoResolver = s_resolver,
+        };
+        o.MakeReadOnly();
+        return o;
+    }
+
+    private static JsonSerializerOptions CreatePascalOptions()
+    {
+        var o = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            Converters =
+            {
+                new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: true),
+                new ImmutableByteArrayConverter(),
+            },
+            TypeInfoResolver = s_resolver,
+        };
+        o.MakeReadOnly();
+        return o;
+    }
+
+    public T? Deserialize<T>(string subject) => JsonSerializer.Deserialize<T>(subject, JsonSerializerOptions);
+    public string Serialize<T>(T subject) => JsonSerializer.Serialize(subject, JsonSerializerOptions);
+    public string SerializePascal<T>(T subject) => JsonSerializer.Serialize(subject, PascalOptions);
+    public string SerializeFormat<T>(T subject) => JsonSerializer.Serialize(subject, JsonSerializerFormatOption);
+    public string SerializeDefault<T>(T subject) => JsonSerializer.Serialize(subject);
+
+    /// <summary>
+    /// Replaces (or adds) a child object on <paramref name="nodeName"/> using the JSON fragment in <paramref name="nodeJson"/>.
+    /// The new object is parsed and inserted into the parsed <paramref name="sourceJson"/> document, then re-serialized.
+    /// </summary>
+    /// <param name="sourceJson">A JSON document string that will be modified.</param>
+    /// <param name="nodeName">The property name of the child node to replace or add.</param>
+    /// <param name="nodeJson">A JSON fragment representing the new child object.</param>
+    /// <returns>The updated JSON string with the specified node replaced.</returns>
+    /// <exception cref="ArgumentException">Thrown when any argument is null or empty, or if parsing fails.</exception>
+    public static string ExpandNode(string sourceJson, string nodeName, string nodeJson)
+    {
+        sourceJson.NotEmpty();
+        nodeName.NotEmpty();
+        nodeJson.NotEmpty();
+
+        JsonObject sourceJsonObject = JsonNode.Parse(sourceJson, default, s_docOptions).NotNull().AsObject();
+
+        // Remove if exists (Remove returns false if not present, no need to check)
+        sourceJsonObject.Remove(nodeName);
+
+        JsonObject jsonObject = JsonNode.Parse(nodeJson, default, s_docOptions).NotNull().AsObject();
+        sourceJsonObject.Add(nodeName, jsonObject);
+
+        return sourceJsonObject.ToJsonString(JsonSerializerOptions);
+    }
+
+    /// <summary>
+    /// Wraps the specified child node into a string value, replacing the original object/array with its serialized JSON text.
+    /// </summary>
+    /// <param name="sourceJson">A JSON document string that contains the node to wrap.</param>
+    /// <param name="nodeName">The property name of the child node to wrap.</param>
+    /// <returns>The updated JSON string with the child node replaced by its serialized text.</returns>
+    /// <exception cref="ArgumentException">Thrown when the node cannot be found or input is invalid.</exception>
+    public static string WrapNode(string sourceJson, string nodeName)
+    {
+        sourceJson.NotEmpty();
+        nodeName.NotEmpty();
+
+        JsonObject sourceJsonObject = JsonNode.Parse(sourceJson, default, s_docOptions).NotNull().AsObject();
+
+        if (!sourceJsonObject.TryGetPropertyValue(nodeName, out var node))
+            throw new ArgumentException($"Cannot find nodeName={nodeName}");
+
+        sourceJsonObject.Remove(nodeName);
+
+        string nodeJson = node.NotNull().ToJsonString(JsonSerializerOptions).NotEmpty();
+        sourceJsonObject.Add(nodeName, nodeJson);
+
+        return sourceJsonObject.ToJsonString(JsonSerializerOptions);
+    }
+}

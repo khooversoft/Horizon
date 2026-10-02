@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "Horizon.AppHost/Horizon.AppHost.csproj"
+  }
+}

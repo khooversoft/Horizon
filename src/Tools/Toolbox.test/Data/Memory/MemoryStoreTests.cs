@@ -1,0 +1,543 @@
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Toolbox.Data;
+using Toolbox.Extensions;
+using Toolbox.Tools;
+using Toolbox.Types;
+
+namespace Toolbox.Test.Store.Memory;
+
+public class MemoryStoreTests
+{
+    private readonly ITestOutputHelper _output;
+
+    public MemoryStoreTests(ITestOutputHelper output) => _output = output.NotNull();
+
+    private IHost BuildHost()
+    {
+        var host = Host.CreateDefaultBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddLogging(c => c.AddLambda(_output.WriteLine).AddDebug().AddFilter(_ => true));
+                services.AddSingleton<MemoryStore>();
+            })
+            .Build();
+
+        return host;
+    }
+
+    private MemoryStore GetMemoryStore() => BuildHost().Services.GetRequiredService<MemoryStore>();
+
+    [Fact]
+    public void EmptyTest()
+    {
+        var ms = GetMemoryStore();
+        var list = ms.Search("**/*");
+        list.Count.Be(0);
+    }
+
+    [Fact]
+    public void GivenValidPath_WhenAdd_ShouldSucceed()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "test/file.txt";
+        var data = new DataETag("test data".ToBytes());
+
+        var result = ms.Add(path, data);
+        result.BeOk();
+        result.Return().NotEmpty();
+
+        ms.Exist(path).BeTrue();
+    }
+
+    [Fact]
+    public void GivenDuplicatePath_WhenAdd_ShouldReturnConflict()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "test/duplicate.txt";
+        var data = new DataETag("data".ToBytes());
+
+        ms.Add(path, data).BeOk();
+        var result = ms.Add(path, data);
+        result.IsConflict().BeTrue();
+    }
+
+    [Fact]
+    public void GivenInvalidPath_WhenAdd_ShouldReturnBadRequest()
+    {
+        var ms = GetMemoryStore();
+
+        const string invalidPath = "";
+        var data = new DataETag("data".ToBytes());
+
+        ms.Add(invalidPath, data).BeBadRequest();
+    }
+
+    [Fact]
+    public void GivenExistingPath_WhenSet_ShouldUpdate()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "test/update.txt";
+        var data1 = new DataETag("original".ToBytes());
+        var data2 = new DataETag("updated".ToBytes());
+
+        ms.Add(path, data1).BeOk();
+        var result = ms.Set(path, data2, null);
+        result.BeOk();
+
+        var retrieved = ms.Get(path);
+        retrieved.BeOk();
+        retrieved.Return().Data.SequenceEqual(data2.Data).BeTrue();
+    }
+
+    [Fact]
+    public void GivenNewPath_WhenSet_ShouldCreate()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "test/new.txt";
+        var data = new DataETag("new data".ToBytes());
+
+        var result = ms.Set(path, data, null);
+        result.BeOk();
+        ms.Exist(path).BeTrue();
+    }
+
+    [Fact]
+    public void GivenExistingPath_WhenGet_ShouldReturnData()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "test/get.txt";
+        var expected = new DataETag("get data".ToBytes());
+
+        ms.Add(path, expected);
+        var result = ms.Get(path);
+
+        result.BeOk();
+        result.Return().Data.SequenceEqual(expected.Data).BeTrue();
+    }
+
+    [Fact]
+    public void GivenNonExistingPath_WhenGet_ShouldReturnNotFound()
+    {
+        var ms = GetMemoryStore();
+
+        var result = ms.Get("nonexistent/path.txt");
+        result.IsNotFound().BeTrue();
+    }
+
+    [Fact]
+    public void GivenExistingPath_WhenDelete_ShouldRemove()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "test/delete.txt";
+        var data = new DataETag("data".ToBytes());
+
+        ms.Add(path, data);
+        var result = ms.Delete(path, null);
+
+        result.BeOk();
+        ms.Exist(path).BeFalse();
+    }
+
+    [Fact]
+    public void GivenNonExistingPath_WhenDelete_ShouldReturnNotFound()
+    {
+        var ms = GetMemoryStore();
+
+        var result = ms.Delete("nonexistent.txt", null);
+        result.IsNotFound().BeTrue();
+    }
+
+    [Fact]
+    public void GivenNewFile_WhenAppend_ShouldCreate()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "test/append.txt";
+        var data = new DataETag("append data".ToBytes());
+
+        var result = ms.Append(path, data, null);
+        result.BeOk();
+        ms.Exist(path).BeTrue();
+    }
+
+    [Fact]
+    public void GivenExistingFile_WhenAppend_ShouldConcatenate()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "test/append2.txt";
+        var data1 = new DataETag("part1".ToBytes());
+        var data2 = new DataETag("part2".ToBytes());
+
+        ms.Add(path, data1);
+        ms.Append(path, data2, null);
+
+        var result = ms.Get(path);
+        var expected = data1.Data.Concat(data2.Data).ToArray();
+        result.Return().Data.SequenceEqual(expected).BeTrue();
+    }
+
+    [Fact]
+    public void GivenMultipleFiles_WhenSearchWithWildcard_ShouldReturnAll()
+    {
+        var ms = GetMemoryStore();
+
+        ms.Add("file1.txt", new DataETag("data1".ToBytes()));
+        ms.Add("file2.txt", new DataETag("data2".ToBytes()));
+        ms.Add("dir/file3.txt", new DataETag("data3".ToBytes()));
+
+        var result = ms.Search("*");
+        result.Count.Be(3);
+    }
+
+    [Fact]
+    public void GivenMultipleFiles_WhenSearchWithPattern_ShouldReturnMatching()
+    {
+        var ms = GetMemoryStore();
+
+        ms.Add("dir/file1.txt", new DataETag("data1".ToBytes()));
+        ms.Add("dir/file2.txt", new DataETag("data2".ToBytes()));
+        ms.Add("other/file3.txt", new DataETag("data3".ToBytes()));
+
+        var result = ms.Search("dir/*");
+        result.Count.Be(2);
+        result.All(x => x.Path.StartsWith("dir/")).BeTrue();
+    }
+
+    [Fact]
+    public void GivenFiles_WhenDeleteFolder_ShouldRemoveMatching()
+    {
+        var ms = GetMemoryStore();
+
+        ms.Add("folder/file1.txt", new DataETag("data1".ToBytes()));
+        ms.Add("folder/file2.txt", new DataETag("data2".ToBytes()));
+        ms.Add("other/file3.txt", new DataETag("data3".ToBytes()));
+
+        ms.SearchDelete("folder/*");
+
+        ms.Search("*").Count.Be(1);
+        ms.Exist("other/file3.txt").BeTrue();
+    }
+
+    [Fact]
+    public void GivenNestedFolder_WhenCreateFolder_ShouldCreateFoldersWithoutData()
+    {
+        var ms = GetMemoryStore();
+
+        ms.CreateFolder("folder/root/nested").BeOk();
+
+        var root = ms.GetDetail("folder/root").BeOk().Return();
+        root.IsFolder.BeTrue();
+        root.ContentLength.Be(0);
+
+        var nested = ms.GetDetail("folder/root/nested").BeOk().Return();
+        nested.IsFolder.BeTrue();
+        nested.ContentLength.Be(0);
+
+        ms.Get("folder/root").Be(StatusCode.NoContent);
+        ms.SearchData("folder/**").Count.Be(0);
+    }
+
+    [Fact]
+    public void GivenFolder_WhenWritingDataAtFolderPath_ShouldReturnConflict()
+    {
+        var ms = GetMemoryStore();
+
+        ms.CreateFolder("folder/path").BeOk();
+
+        ms.Add("folder/path", new DataETag("add".ToBytes())).BeConflict();
+        ms.Append("folder/path", new DataETag("append".ToBytes()), null).BeConflict();
+        ms.Set("folder/path", new DataETag("set".ToBytes()), null).BeConflict();
+
+        var detail = ms.GetDetail("folder/path").BeOk().Return();
+        detail.IsFolder.BeTrue();
+        detail.ContentLength.Be(0);
+    }
+
+    [Fact]
+    public void GivenFolderAndFile_WhenSearchData_ShouldReturnOnlyFiles()
+    {
+        var ms = GetMemoryStore();
+
+        ms.CreateFolder("folder/data").BeOk();
+        ms.Add("folder/data/file.txt", new DataETag("file".ToBytes())).BeOk();
+
+        var result = ms.SearchData("folder/**");
+
+        result.Count.Be(1);
+        result.Single().Detail.Path.Be("folder/data/file.txt");
+        result.Single().Data.Data.SequenceEqual("file".ToBytes()).BeTrue();
+    }
+
+    [Fact]
+    public void GivenPathsDifferOnlyByCase_WhenUsed_ShouldRemainDistinct()
+    {
+        var ms = GetMemoryStore();
+
+        ms.Add("Case/File.txt", new DataETag("upper".ToBytes())).BeOk();
+        ms.Add("case/file.txt", new DataETag("lower".ToBytes())).BeOk();
+
+        ms.Exist("Case/File.txt").BeTrue();
+        ms.Exist("case/file.txt").BeTrue();
+        ms.Exist("CASE/File.txt").BeFalse();
+
+        ms.Search("Case/*").Select(x => x.Path).ToArray().Be(["Case/File.txt"]);
+        ms.Search("case/*").Select(x => x.Path).ToArray().Be(["case/file.txt"]);
+        ms.Search("case/*.TXT").Count.Be(0);
+
+        ms.SearchDelete("Case/*").BeOk();
+
+        ms.Exist("Case/File.txt").BeFalse();
+        ms.Exist("case/file.txt").BeTrue();
+    }
+
+    [Fact]
+    public void GivenPathWithLeadingSlash_WhenAdded_ShouldFail()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "/test/file.txt";
+        var data = new DataETag("data".ToBytes());
+
+        ms.Add(path, data).BeBadRequest();
+    }
+
+    [Fact]
+    public async Task GivenConcurrentAdds_WhenDifferentPaths_ShouldSucceed()
+    {
+        var ms = GetMemoryStore();
+
+        const int concurrency = 10;
+        var tasks = Enumerable.Range(0, concurrency)
+            .Select(i => Task.Run(() =>
+            {
+                var path = $"concurrent/file{i}.txt";
+                var data = new DataETag($"data{i}".ToBytes());
+                return ms.Add(path, data);
+            }))
+            .ToArray();
+
+        var results = await Task.WhenAll(tasks);
+        results.All(r => r.IsOk()).BeTrue();
+        ms.Search("concurrent/*").Count.Be(concurrency);
+    }
+
+    [Fact]
+    public async Task GivenConcurrentAdds_WhenSamePath_OnlyOneShouldSucceed()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "concurrent/same.txt";
+        const int concurrency = 10;
+
+        var tasks = Enumerable.Range(0, concurrency)
+            .Select(i => Task.Run(() =>
+            {
+                var data = new DataETag($"data{i}".ToBytes());
+                return ms.Add(path, data);
+            }))
+            .ToArray();
+
+        var results = await Task.WhenAll(tasks);
+        results.Count(r => r.IsOk()).Be(1);
+        results.Count(r => r.IsConflict()).Be(concurrency - 1);
+    }
+
+    [Fact]
+    public async Task GivenConcurrentSets_WhenSamePath_ShouldHandleCorrectly()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "concurrent/set.txt";
+        const int concurrency = 100;
+
+        var tasks = Enumerable.Range(0, concurrency)
+            .Select(i => Task.Run(() =>
+            {
+                var data = new DataETag($"data{i}".ToBytes());
+                return ms.Set(path, data, null);
+            }))
+            .ToArray();
+
+        var results = await Task.WhenAll(tasks);
+        results.All(r => r.IsOk()).BeTrue();
+
+        // Final value should be one of the concurrent updates
+        var final = ms.Get(path);
+        final.BeOk();
+    }
+
+    [Fact]
+    public async Task GivenConcurrentGetSet_WhenRunning_ShouldMaintainConsistency()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "concurrent/getset.txt";
+        ms.Add(path, new DataETag("initial".ToBytes()));
+
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var setTask = Task.Run(async () =>
+        {
+            int count = 0;
+            while (!cts.Token.IsCancellationRequested)
+            {
+                var data = new DataETag($"data{count++}".ToBytes());
+                ms.Set(path, data, null);
+                await Task.Delay(1);
+            }
+            return count;
+        });
+
+        var getTask = Task.Run(async () =>
+        {
+            int count = 0;
+            while (!cts.Token.IsCancellationRequested)
+            {
+                var result = ms.Get(path);
+                result.BeOk();
+                count++;
+                await Task.Delay(1);
+            }
+            return count;
+        });
+
+        var results = await Task.WhenAll(setTask, getTask);
+        _output.WriteLine($"Sets: {results[0]}, Gets: {results[1]}");
+    }
+
+    [Fact]
+    public async Task StressTest_LargeDataset_ShouldPerform()
+    {
+        var ms = GetMemoryStore();
+
+        const int size = 1000;
+        var start = DateTime.Now;
+
+        // Add phase
+        var addTasks = Enumerable.Range(0, size)
+            .Select(i => Task.Run(() =>
+            {
+                var path = $"stress/file{i}.txt";
+                var data = new DataETag($"data{i}".ToBytes());
+                return ms.Add(path, data);
+            }))
+            .ToArray();
+
+        await Task.WhenAll(addTasks);
+        var addTime = DateTime.Now - start;
+
+        ms.Search("stress/*").Count.Be(size);
+
+        // Get phase
+        start = DateTime.Now;
+        var getTasks = Enumerable.Range(0, size)
+            .Select(i => Task.Run(() => ms.Get($"stress/file{i}.txt")))
+            .ToArray();
+
+        var getResults = await Task.WhenAll(getTasks);
+        var getTime = DateTime.Now - start;
+        getResults.All(r => r.IsOk()).BeTrue();
+
+        // Performance metrics
+        double addTps = size / addTime.TotalSeconds;
+        double getTps = size / getTime.TotalSeconds;
+
+        _output.WriteLine($"Add: {size} items in {addTime.TotalMilliseconds}ms, TPS: {addTps:F2}");
+        _output.WriteLine($"Get: {size} items in {getTime.TotalMilliseconds}ms, TPS: {getTps:F2}");
+
+        // Cleanup
+        ms.SearchDelete("stress/*");
+        ms.Search("*").Count.Be(0);
+    }
+
+    [Fact]
+    public async Task StressTest_ContinuousOperations_ShouldMaintainStability()
+    {
+        var ms = GetMemoryStore();
+
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        int addCount = 0, setCount = 0, getCount = 0, deleteCount = 0;
+
+        var tasks = new[]
+        {
+            Task.Run(async () => {
+                while (!cts.Token.IsCancellationRequested)
+                {
+                    var path = $"stress/add{Interlocked.Increment(ref addCount)}.txt";
+                    ms.Add(path, new DataETag($"data{addCount}".ToBytes()));
+                    await Task.Delay(1);
+                }
+            }),
+            Task.Run(async () => {
+                while (!cts.Token.IsCancellationRequested)
+                {
+                    var path = $"stress/set{Interlocked.Increment(ref setCount) % 100}.txt";
+                    ms.Set(path, new DataETag($"data{setCount}".ToBytes()), null);
+                    await Task.Delay(1);
+                }
+            }),
+            Task.Run(async () => {
+                while (!cts.Token.IsCancellationRequested)
+                {
+                    Interlocked.Increment(ref getCount);
+                    ms.Get($"stress/set{getCount % 100}.txt");
+                    await Task.Delay(1);
+                }
+            })
+        };
+
+        await Task.WhenAll(tasks);
+
+        var totalOps = addCount + setCount + getCount + deleteCount;
+        var tps = totalOps / 5.0; // 5 second test
+
+        _output.WriteLine($"Total ops: {totalOps}, TPS: {tps:F2}");
+        _output.WriteLine($"Add: {addCount}, Set: {setCount}, Get: {getCount}, Delete: {deleteCount}");
+
+        // Cleanup
+        ms.SearchDelete("stress/*");
+    }
+
+    [Fact]
+    public void GivenData_WhenAdded_ShouldGenerateETag()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "test/etag.txt";
+        var data = new DataETag("test".ToBytes());
+
+        var result = ms.Add(path, data);
+        result.BeOk();
+        result.Return().NotEmpty();
+
+        var detail = ms.GetDetail(path);
+        detail.BeOk();
+        detail.Return().ETag.NotEmpty();
+    }
+
+    [Fact]
+    public void GivenUpdate_WhenSet_ShouldChangeETag()
+    {
+        var ms = GetMemoryStore();
+
+        const string path = "test/etag2.txt";
+        var data1 = new DataETag("original".ToBytes());
+        var data2 = new DataETag("updated".ToBytes());
+
+        ms.Add(path, data1);
+        var etag1 = ms.GetDetail(path).Return().ETag;
+
+        ms.Set(path, data2, null);
+        var etag2 = ms.GetDetail(path).Return().ETag;
+
+        etag1.NotBe(etag2);
+    }
+}

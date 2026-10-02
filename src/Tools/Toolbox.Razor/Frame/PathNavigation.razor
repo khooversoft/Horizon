@@ -1,0 +1,61 @@
+﻿<MudPaper Elevation="0" Outlined="true" Style="padding:10px">
+    <MudStack Spacing="2" Row="true">
+        @for (int i = 0; i < _items.Count; i++)
+        {
+            var item = _items[i];
+
+            if (i != 0)
+            {
+                <span style="display:flex;align-items:center;">
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Color="Color.Surface" />
+                </span>
+            }
+
+            if (i == _items.Count - 1)
+            {
+                <span style="display:flex;align-items:center;">
+                    <MudText Typo="Typo.body2" Color="Color.Surface">@item.Key</MudText>
+                </span>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Text"
+                           Color="@Color.Success"
+                           Size="Size.Small"
+                           OnClick="@EventCallback.Factory.Create(this, () => OnClick.InvokeAsync(item.Value))"
+                           Style="text-transform:none;min-width:0;"
+                           Disabled="@(i == _items.Count - 1)">
+                    @item.Key
+                </MudButton>
+            }
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public string StoreName { get; set; } = null!;
+    [Parameter] public string Path { get; set; } = null!;
+    [Parameter] public EventCallback<string> OnClick { get; set; }
+
+    private IReadOnlyList<KeyValue<string>> _items = [];
+
+    protected override void OnParametersSet()
+    {
+        string[] segments = Path.IsNotEmpty() ? Path.Split('/', StringSplitOptions.RemoveEmptyEntries) : [];
+
+        var items = new List<KeyValue<string>>(segments.Length + 1);
+        var currentPath = new StringBuilder();
+
+        items.Add(new KeyValue<string>(StoreName, "/"));
+
+        foreach (string segment in segments)
+        {
+            if (currentPath.Length > 0) currentPath.Append('/');
+            currentPath.Append(segment);
+
+            items.Add(new KeyValue<string>(StorePathTool.GetFileName(segment), currentPath.ToString()));
+        }
+
+        _items = items.ToArray();
+    }
+}

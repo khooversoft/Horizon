@@ -1,0 +1,59 @@
+﻿<PageContent Size="WidthSize.Full">
+    <MudStack Spacing="3" Style="@_style">
+
+        <MudSplitPanel @ref="_splitPanel"
+                       Style="flex: 1 1 auto; min-height: 0;"
+                       Horizontal="@_horizontal"
+                       Rounded="false"
+                       Elevation="1"
+                       PanelGap="10"
+                       ResetOnDoubleClick="true">
+            <FirstPanel>
+                <MudPaper Width="100%" Height="100%" Square="false" Elevation="8"
+                          Style="overflow: auto; padding: 5px">
+
+                    <MudTextField T="string"
+                                  @bind-Value="@_value"
+                                  @bind-Value:after="@(() => ValueChanged.InvokeAsync(_value))"
+                                  Variant="Variant.Text"
+                                  Sizing="InputSizing.Auto"
+                                  Immediate="true"
+                                  FullWidth="true"
+                                  Underline="true"
+                                  Placeholder="Enter markdown or normal text" />
+                </MudPaper>
+            </FirstPanel>
+            <SecondPanel>
+                <MudPaper Width="100%" Height="100%" Square="false" Elevation="2" Style="overflow: auto; padding: 5px">
+                    <MudMarkdown Value="@_value" SourceType="MarkdownSourceType.RawValue" />
+                </MudPaper>
+            </SecondPanel>
+        </MudSplitPanel>
+    </MudStack>
+</PageContent>
+
+@code {
+    [Parameter] public string Value { get; set; } = null!;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public int HeightPadding { get; set; } = 200;
+    [Parameter] public bool Horizontal { get; set; }
+
+    private MudSplitPanel _splitPanel = null!;
+    private bool _horizontal = false;
+    private string _value = null!;
+    private bool IsChanged() => Value != _value;
+    private string _style = null!;
+
+    protected override void OnParametersSet()
+    {
+        _horizontal = Horizontal;
+        _value = Value;
+
+        _style = new CssStyleBuilder()
+            .Add("margin:10px;")
+            .Add($"height: calc(100vh - {HeightPadding}px)")
+            .Add(Style)
+            .ToString();
+    }
+}

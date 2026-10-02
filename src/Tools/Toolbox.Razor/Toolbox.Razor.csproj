@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+
+    <ItemGroup>
+        <SupportedPlatform Include="browser" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Azure.Identity" Version="1.21.0" />
+        <PackageReference Include="MudBlazor" Version="9.10.0" />
+        <PackageReference Include="MudBlazor.FontIcons.MaterialSymbols" Version="1.5.0" />
+        <PackageReference Include="MudBlazor.Markdown" Version="9.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Toolbox\Toolbox.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Message\" />
+    </ItemGroup>
+
+</Project>

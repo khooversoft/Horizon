@@ -1,0 +1,27 @@
+﻿<MudPaper Elevation="@Elevation" Square="true">
+    <MudToolBar Dense=true Gutters="@Gutters">
+
+        @ChildContent
+
+    </MudToolBar>
+</MudPaper>
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public int Elevation { get; set; } = 2;
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public bool Gutters { get; set; } = false;
+
+    // private const string _lineFmt = "border-bottom-color:gray;border-bottom-style:solid;border-bottom-width:1px;background-color: white";
+    private string? _style = null;
+
+    protected override void OnParametersSet()
+    { // #DCFCE7
+        if (Style.IsNotEmpty())
+        {
+            _style = new CssStyleBuilder()
+                        .Add(Style)
+                        .ToString();
+        }
+    }
+}

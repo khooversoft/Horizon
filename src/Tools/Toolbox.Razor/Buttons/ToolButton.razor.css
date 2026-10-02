@@ -1,0 +1,13 @@
+/* .tool-button styles live in the app's global stylesheet (app.css).
+   Scoped CSS cannot target MudButton's rendered root element because the
+   scoped b-* attribute is not applied to child components. */
+
+
+/*.tool-button {
+    background-color: white !important;
+}
+
+    .tool-button:active {
+        background-color: white !important;
+    }
+*/

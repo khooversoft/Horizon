@@ -1,0 +1,68 @@
+﻿@if (_show)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Rounded="true" Size="Size.Medium" Value="100" Style="margin:20px" />
+}
+
+@implements IDisposable
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public int DelayMs { get; set; } = 300;
+
+    private bool _show;
+    private bool _pending;
+    private CancellationTokenSource? _cts;
+
+    protected override void OnParametersSet()
+    {
+        if (!Show)
+        {
+            CancelPending();
+            _show = false;
+            return;
+        }
+
+        if (_show || _pending) return;
+
+        if (DelayMs <= 0)
+        {
+            _show = true;
+            return;
+        }
+
+        _pending = true;
+        _cts = new CancellationTokenSource();
+        _ = ShowAfterDelayAsync(_cts.Token);
+    }
+
+    private async Task ShowAfterDelayAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(DelayMs, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await InvokeAsync(() =>
+        {
+            if (token.IsCancellationRequested || !Show) return;
+
+            _pending = false;
+            _show = true;
+            StateHasChanged();
+        });
+    }
+
+    private void CancelPending()
+    {
+        _pending = false;
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+    }
+
+    public void Dispose() => CancelPending();
+}

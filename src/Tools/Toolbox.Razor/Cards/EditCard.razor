@@ -1,0 +1,19 @@
+﻿<MudStack>
+
+    @if (Header != null)
+    {
+        <div>
+            @Header
+        </div>
+    }
+
+    <MudPaper Width="100%" Height="100%" Style="padding:10px;" Square="true" Elevation="0">
+        @Content
+    </MudPaper>
+
+</MudStack>
+
+@code {
+    [Parameter] public RenderFragment Content { get; set; } = null!;
+    [Parameter] public RenderFragment Header { get; set; } = null!;
+}

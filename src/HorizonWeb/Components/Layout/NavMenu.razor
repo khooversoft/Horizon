@@ -1,0 +1,15 @@
+﻿
+<MudPaper Elevation="6" Square="true" Style="height:100%; display:flex; flex-direction:column; background-color: var(--tool-background-color-frame); width: 72px; margin-left:1px">
+    <ToolNavBar Style="margin-top:11px; flex:1;">
+        <ToolNavButton Lines="@(["Home"])" Icon="@Icons.Material.Outlined.Home" Href="/" />
+        <ToolNavButton Lines="@(["Cart"])" Icon="@Icons.Material.Outlined.ShoppingCart" Href="/under-construction" />
+        <ToolNavButton Lines="@(["Account"])" Icon="@Icons.Material.Outlined.AccountBalance" Href="/under-construction" Disabled="true" />
+        <ToolNavButton Lines="@(["Settings"])" Icon="@Icons.Material.Outlined.Settings" Href="/under-construction" />
+        <ToolNavButton Lines="@(["Help"])" Icon="@Icons.Material.Outlined.QuestionMark" Href="/under-construction" Disabled="true" />
+    </ToolNavBar>
+</MudPaper>
+
+@code {
+    @inject ISnackbar _snackbar;
+    @inject NavigationManager _navigation;
+}

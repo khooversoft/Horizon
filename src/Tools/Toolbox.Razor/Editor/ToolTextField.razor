@@ -1,0 +1,47 @@
+﻿<MudTextField T="string"
+              Label="@Label"
+              @bind-Value="@_value"
+              Variant="Variant.Outlined"
+              Error="@_validator.IsError"
+              ErrorText="@_validator.ErrorText"
+              Immediate="true"
+              DebounceInterval="100"
+              Clearable="true"
+              Adornment="@_adornment"
+              AdornmentIcon="@Icons.Material.Outlined.Edit"
+              ShrinkLabel="true"
+              HelperText="@HelperText" />
+
+
+@code {
+    [Parameter] public string Value { get; set; } = null!;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public FieldValidator Validator { get; set; } = FieldValidator.Required;
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Modified { get; set; }
+
+    private bool _initialized = false;
+    private Adornment _adornment = Adornment.None;
+
+    FieldValidator<string> _validator = new();
+
+    protected override void OnParametersSet()
+    {
+        _value = Value;
+        _validator = FieldValidation.Create(Validator);
+        _adornment = Modified ? Adornment.End : Adornment.None;
+        _initialized = true;
+    }
+
+    private string? _value
+    {
+        get => field;
+        set
+        {
+            field = value;
+            _validator.Validate(field);
+            if (_initialized) ValueChanged.InvokeAsync(field);
+        }
+    }
+}

@@ -1,0 +1,9 @@
+﻿<MudNavMenu Class="@Class" Style="@Style" Dense="true">
+    @ChildContent
+</MudNavMenu>
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+}

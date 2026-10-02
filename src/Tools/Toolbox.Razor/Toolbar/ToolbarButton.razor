@@ -1,0 +1,98 @@
+﻿@if (Show)
+{
+    if (Href.IsNotEmpty())
+    {
+        <MudButton StartIcon="@_icon"
+                   Variant="MudBlazor.Variant.Text"
+                   Color="@_color"
+                   Href="@Href"
+                   Disabled="@Disabled"
+                   Style="margin: 0px 5px;">
+
+            @if (_text.IsNotEmpty())
+            {
+                <span>@_text</span>
+            }
+        </MudButton>
+    }
+    else
+    {
+        <MudButton StartIcon="@_icon"
+                   Variant="MudBlazor.Variant.Text"
+                   Color="@_color"
+                   OnClick="@OnClick"
+                   Disabled="@Disabled"
+                   Style="margin: 0px 5px;">
+
+            @if (_text.IsNotEmpty())
+            {
+                <span>@_text</span>
+            }
+        </MudButton>
+    }
+}
+
+@code {
+    [Parameter] public ToolbarVariant Variant { get; set; }
+    [Parameter] public string? Icon { get; set; } = null!;
+    [Parameter] public Color? ButtonColor { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Show { get; set; } = true;
+
+    private string? _icon = null!;
+    private string? _text = null!;
+    private Color _color;
+    private record VariantConfig(string Icon, Color Color, string? Text);
+    private static readonly Dictionary<ToolbarVariant, VariantConfig> VariantConfigs = new()
+    {
+        [ToolbarVariant.ArrowBack] = new(Icons.Material.Filled.ArrowBack, Color.Surface, "Back"),
+        [ToolbarVariant.Add] = new(Icons.Material.Outlined.Add, Color.Primary, "Add"),
+        [ToolbarVariant.Edit] = new(Icons.Material.Outlined.Edit, Color.Primary, "Edit"),
+        [ToolbarVariant.Save] = new(Icons.Material.Outlined.Save, Color.Primary, "Save"),
+        [ToolbarVariant.Delete] = new(Icons.Material.Outlined.Delete, Color.Error, "Delete"),
+        [ToolbarVariant.Link] = new(Icons.Material.Outlined.AddLink, Color.Surface, "Link"),
+        [ToolbarVariant.Linked] = new(Icons.Custom.Uncategorized.AlertSuccess, Color.Surface, "Linked"),
+        [ToolbarVariant.Cancel] = new(Icons.Material.Outlined.Cancel, Color.Surface, "Cancel"),
+        [ToolbarVariant.Run] = new(Icons.Material.Outlined.PlayArrow, Color.Info, "Run"),
+        [ToolbarVariant.Refresh] = new(Icons.Material.Outlined.Refresh, Color.Surface, "Refresh"),
+        [ToolbarVariant.Access] = new(Icons.Material.Outlined.Security, Color.Primary, "Access"),
+        [ToolbarVariant.Undo] = new(Icons.Material.Outlined.Undo, Color.Primary, "Undo"),
+        [ToolbarVariant.Close] = new(Icons.Material.Outlined.Close, Color.Surface, "Close"),
+        [ToolbarVariant.Expand] = new(Icons.Material.Outlined.ExpandMore, Color.Surface, null),
+        [ToolbarVariant.Collapse] = new(Icons.Material.Outlined.ExpandLess, Color.Surface, null),
+        [ToolbarVariant.ExpandAll] = new(Icons.Material.Outlined.KeyboardDoubleArrowDown, Color.Surface, null),
+        [ToolbarVariant.CollapseAll] = new(Icons.Material.Outlined.KeyboardDoubleArrowUp, Color.Surface, null),
+        [ToolbarVariant.Search] = new(Icons.Material.Outlined.Search, Color.Surface, null),
+        [ToolbarVariant.Upload] = new(Icons.Material.Outlined.FileUpload, Color.Surface, "Upload"),
+        [ToolbarVariant.Download] = new(Icons.Material.Outlined.FileDownload, Color.Surface, "Download"),
+        [ToolbarVariant.Clear] = new(Icons.Material.Outlined.Clear, Color.Surface, "Clear"),
+        [ToolbarVariant.NewFolder] = new(Icons.Material.Outlined.CreateNewFolder, Color.Surface, "Add Folder"),
+        [ToolbarVariant.OpenInBrowser] = new(Icons.Material.Outlined.OpenInBrowser, Color.Surface, "Open"),
+        [ToolbarVariant.ContentCopy] = new(Icons.Material.Outlined.ContentCopy, Color.Surface, "Copy"),
+        [ToolbarVariant.List] = new(Icons.Material.Outlined.List, Color.Surface, "Properties"),
+        [ToolbarVariant.Reorder] = new(Icons.Material.Outlined.Reorder, Color.Surface, "Reorder"),
+        [ToolbarVariant.Yes] = new(Icons.Material.Outlined.Check, Color.Surface, "Yes"),
+        [ToolbarVariant.No] = new(Icons.Material.Outlined.Cancel, Color.Surface, "No"),
+        [ToolbarVariant.AllCollapse] = new(Icons.Material.Outlined.KeyboardDoubleArrowUp, Color.Surface, null),
+    };
+
+    protected override void OnParametersSet()
+    {
+        Variant.IsEnumValid().Assert(x => x == true, $"Invalid ToolbarVariant: {Variant}");
+
+        if (VariantConfigs.TryGetValue(Variant, out var config))
+        {
+            _icon = Icon.ToNullIfEmpty() ?? config.Icon;
+            _color = ButtonColor.HasValue ? ButtonColor.Value : config.Color;
+            _text = Label.ToNullIfEmpty() ?? config.Text;
+            return;
+        }
+
+        _icon = Icon;
+        _color = ButtonColor ?? Color.Surface;
+        _text = Label;
+    }
+}

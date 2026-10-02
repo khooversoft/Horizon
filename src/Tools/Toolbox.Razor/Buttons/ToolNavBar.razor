@@ -1,0 +1,56 @@
+﻿
+<CascadingValue Value="this">
+    <MudStack Spacing="0" Style="@Style">
+        @ChildContent
+    </MudStack>
+</CascadingValue>
+
+@code {
+    @inject ISnackbar _snackbar;
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public string? Style { get; set; }
+
+    private readonly List<ToolNavButton> _children = new();
+    private ToolNavButton? _activePanel;
+
+    private ToolNavButton? GetFirstEnabledPanel() => _children.FirstOrDefault(x => !x.Disabled);
+
+    private void msg(string btn)
+    {
+        _snackbar.Add($"You clicked {btn}", Severity.Info);
+    }
+
+    internal void AddControl(ToolNavButton button)
+    {
+        if (button is null || _children.Contains(button)) return;
+
+        _children.Add(button);
+        if (button.Disabled) return;
+
+        if (button.Active || _activePanel is null)
+        {
+            _activePanel?.SetActive(false);
+            _activePanel = button;
+        }
+    }
+
+    internal bool IsControlActive(ToolNavButton button) => _activePanel == button;
+
+    internal async Task RemovePanel(ToolNavButton panel)
+    {
+        if (!_children.Remove(panel)) return;
+        if (_activePanel == panel) _activePanel = GetFirstEnabledPanel();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    internal async Task MakeControlActive(ToolNavButton button)
+    {
+        if (button is null || button.Disabled) return;
+        _activePanel?.SetActive(false);
+
+        _activePanel = button;
+        _activePanel.SetActive(true);
+
+        await InvokeAsync(StateHasChanged);
+    }
+}

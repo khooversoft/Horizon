@@ -1,0 +1,78 @@
+﻿@inherits LayoutComponentBase
+@inject IHttpContextAccessor HttpContextAccessor
+
+<MudThemeProvider Theme="@BlackOrange.Theme" IsDarkMode=_isDarkMode />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Fixed="true"
+               Dense="false"
+               Elevation="0"
+               Gutters="true">
+
+        <MudImage Src="badpetlogo.png" Style="height: var(--mud-appbar-height); width: auto; object-fit: contain;" />
+
+        <MudSpacer />
+
+        <MudTextField @bind-Value="@_search"
+                      Variant="Variant.Outlined"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Margin="Margin.Dense"
+                      Clearable="true"
+                      Style="background-color: white" />
+
+        <MudSpacer />
+        <MudIconButton Icon="@LeftPanelOpenCloseIcon()" OnClick="OpenCloseLeftPanel" />
+        <MudIconButton Icon="@Icons.Material.Outlined.Notifications" />
+        <MudIconButton Icon="@Icons.Material.Outlined.Settings" />
+        <MudIconButton Icon="@Icons.Material.Outlined.QuestionMark" />
+
+        <MudIconButton Icon="@LogOnOffIcon()" />
+        <MudFab StartIcon="@Icons.Material.Outlined.Person"
+                Size="Size.Small"
+                Variant="Variant.Text"
+                Style="background-color: rgba(200, 200, 200, .8); color:white" />
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_leftMenuOpen"
+               Variant="@_drawerVariant"
+               Breakpoint="Breakpoint.None"
+               ClipMode="DrawerClipMode.Always"
+               Width="75px"
+               Style="padding: 0px">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent Class="main-body">
+        <div class="body-wrapper">
+            @Body
+        </div>
+    </MudMainContent>
+</MudLayout>
+
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+
+@code {
+    @inject NavigationManager _navigation;
+
+    private bool _isDarkMode = false;
+    // private string _selectedTheme = PrimaryTheme.DefaultThemeName;
+    private DrawerVariant _drawerVariant = DrawerVariant.Persistent;
+    private string? _search;
+    private bool _loggedOn = false;
+    private bool _leftMenuOpen = true;
+
+    private string LogOnOffIcon() => _loggedOn ? Icons.Material.Outlined.Logout : Icons.Material.Outlined.Login;
+    private string LeftPanelOpenCloseIcon() => _leftMenuOpen ? MaterialSymbols.Outlined.LeftPanelClose : MaterialSymbols.Outlined.LeftPanelOpen;
+
+    private void OpenCloseLeftPanel() => _leftMenuOpen = !_leftMenuOpen;
+}

@@ -1,0 +1,17 @@
+﻿<MudCard Square="true" Elevation="4" Style="width: 250px; min-width: 250px; height: 250px; min-height: 250px; display: flex; flex-direction: column;">
+    <MudCardHeader>
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h4">@Header</MudText>
+            <MudText Typo="Typo.caption">@Caption</MudText>
+        </MudStack>
+    </MudCardHeader>
+    <MudCardContent Style="flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; align-items: center;">
+        <img src="@Image" alt="@Header" style="width: 100%; height: 100%; object-fit: contain; display: block;" />
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public string Header { get; set; } = null!;
+    [Parameter] public string Caption { get; set; } = null!;
+    [Parameter] public string Image { get; set; } = null!;
+}

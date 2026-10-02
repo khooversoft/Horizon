@@ -1,0 +1,26 @@
+﻿<div style="@_style">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public WidthSize Size { get; set; } = WidthSize.Form;
+    [Parameter] public string? Style { get; set; }
+
+    private string _style = "width: 100%";
+
+    protected override void OnParametersSet()
+    {
+        var s1 = Size switch
+        {
+            WidthSize.Full => "width: 100%",
+            WidthSize.Form => "max-width: 900px",
+            _ => throw new ArgumentException()
+        };
+
+        _style = new CssStyleBuilder()
+            .Add(s1)
+            .Add(Style)
+            .ToString();
+    }
+}

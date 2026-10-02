@@ -1,0 +1,19 @@
+{
+  "Datalake": {
+    "Account": "gfsreports",
+    "Container": "tests",
+    "BasePath": "dev-tests",
+    "Credentials": {
+      "ClientId": "e9cc702c-4354-49d2-98f8-d6622223195c",
+      "TenantId": "33470f72-2b3b-4a0b-837d-4ba9ba499d69"
+    }
+  },
+
+  "SapConfig": {
+    "User": "secret",
+    "Password": "anothersecret",
+    "Server": "stm-frs-01"
+  },
+
+  "AdminConnectionString": "Data Source=localhost;Initial Catalog=GFSWebDb;Integrated Security=True;TrustServerCertificate=False;Encrypt=False"
+}

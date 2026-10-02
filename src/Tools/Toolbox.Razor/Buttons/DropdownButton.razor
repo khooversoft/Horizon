@@ -1,0 +1,36 @@
+﻿<MudButtonGroup Variant="Variant.Text" Color="@Color" Style="@ButtonStyle">
+
+    <MudButton Color="@Color" Disabled="@IsDisabled" OnClick="@(() => OnClick.InvokeAsync(CurrentValue))">
+        @(CurrentValue ?? Title)
+    </MudButton>
+
+    <MudMenu Color="@Color" Disabled="@Disabled" Icon="@Icons.Material.Filled.ArrowDropDown">
+        @foreach (var option in Options)
+        {
+            <MudMenuItem OnClick="@(() => OnClick.InvokeAsync(option.Key))">@option.Value</MudMenuItem>
+        }
+    </MudMenu>
+
+</MudButtonGroup>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public Color Color { get; set; } = Color.Default;
+    [Parameter] public IReadOnlyList<KeyValue<string>> Options { get; set; } = [];
+    [Parameter] public string? CurrentValue { get; set; }
+    [Parameter] public EventCallback<string> OnClick { get; set; }
+    [Parameter] public bool Dense { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+
+    private string ButtonStyle => Dense ? "margin: 0px 5px;min-height:20px;height:20px;" : "margin: 0px 5px;";
+    private bool IsDisabled => Disabled || CurrentValue.IsEmpty();
+
+    protected override void OnParametersSet()
+    {
+        CurrentValue = Options.IndexOf(x => x.Key == CurrentValue) switch
+        {
+            -1 => null,
+            _ => CurrentValue
+        };
+    }
+}
