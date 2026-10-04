@@ -1,0 +1,41 @@
+﻿<MudPaper Style="@_style" Elevation="0" Square="true">
+    @ChildContent
+</MudPaper>
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public string? Height { get; init; }
+    [Parameter] public string? Width { get; init; }
+    [Parameter] public string? BackgroundImage { get; init; }
+    [Parameter] public string? BackgroundSize { get; init; }
+    [Parameter] public string? Style { get; set; }
+
+    private string _style = null!;
+
+    protected override void OnParametersSet()
+    {
+        string? s1 = ToCssClass();
+
+        _style = new CssStyleBuilder()
+            .Add(s1)
+            .Add(Style)
+            .ToString();
+    }
+
+    private string ToCssClass()
+    {
+        string backgroundSize = BackgroundSize ?? "100% 100%";
+
+        string? backgroundImage = BackgroundImage is null ? null : $"background-image: url('{BackgroundImage}'); background-size: {backgroundSize}; background-repeat: no-repeat;";
+        string? sHeight = Height is null ? null : $"height: {Height};";
+        string? sWidth = Width is null ? null : $"width: {Width};";
+
+        var style = new CssStyleBuilder()
+            .Add(sHeight)
+            .Add(sWidth)
+            .Add(backgroundImage)
+            .ToString();
+
+        return style;
+    }
+}

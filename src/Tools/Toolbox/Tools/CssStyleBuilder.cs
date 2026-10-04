@@ -41,7 +41,7 @@ public sealed class CssStyleBuilder : IEnumerable<KeyValuePair<string, string?>>
     /// <summary>Add style(s) when <paramref name="isInclude"/> returns true and value is not empty.</summary>
     public CssStyleBuilder Add(string? value, Func<bool> isInclude)
     {
-        ArgumentNullException.ThrowIfNull(isInclude);
+        isInclude.NotNull();
         return value.IsNotEmpty() && isInclude() ? Add(value) : this;
     }
 

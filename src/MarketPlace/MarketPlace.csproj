@@ -15,4 +15,9 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Tools\Toolbox.Razor\Toolbox.Razor.csproj" />
+    <ProjectReference Include="..\Tools\Toolbox\Toolbox.csproj" />
+  </ItemGroup>
+
 </Project>
