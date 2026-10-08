@@ -8,10 +8,10 @@ permissions:
   contents: read
 env:
   AZURE_WEBAPP_NAME: civilly-insane
-  AZURE_WEBAPP_PACKAGE_PATH: published
+  AZURE_WEBAPP_PACKAGE_PATH: CivillyInsaneWeb/published
   CONFIGURATION: Release
   DOTNET_CORE_VERSION: 10.0.x
-  PROJECT_PATH: src/CivillyInsane/CivillyInsaneWeb/CivillyInsaneWeb.csproj
+  WORKING_DIRECTORY: CivillyInsaneWeb
 jobs:
   build:
     environment: civilly_insane_Env
@@ -23,17 +23,18 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_CORE_VERSION }}
     - name: Restore
-      run: dotnet restore "${{ env.PROJECT_PATH }}"
+      run: dotnet restore "${{ env.WORKING_DIRECTORY }}"
     - name: Build
-      run: dotnet build "${{ env.PROJECT_PATH }}" --configuration ${{ env.CONFIGURATION }} --no-restore
+      run: dotnet build "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-restore
+    - name: Test
+      run: dotnet test "${{ env.WORKING_DIRECTORY }}" --no-build
     - name: Publish
-      run: dotnet publish "${{ env.PROJECT_PATH }}" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
+      run: dotnet publish "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
     - name: Publish Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: webapp
         path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-        if-no-files-found: error
   deploy:
     environment: civilly_insane_Env
     runs-on: ubuntu-latest
@@ -47,9 +48,9 @@ jobs:
     - name: Azure Login
       uses: azure/login@v2
       with:
-        client-id: ${{ secrets.civilly_insane_CLIENT_ID_CE88 }}
-        tenant-id: ${{ secrets.civilly_insane_TENANT_ID_CE88 }}
-        subscription-id: ${{ secrets.civilly_insane_SUBSCRIPTION_ID_CE88 }}
+        client-id: ${{ vars.civilly_insane_CLIENT_ID_B17A }}
+        tenant-id: ${{ vars.civilly_insane_TENANT_ID_B17A }}
+        subscription-id: ${{ vars.civilly_insane_SUBSCRIPTION_ID_B17A }}
     - name: Deploy to Azure WebApp
       uses: azure/webapps-deploy@v2
       with:
