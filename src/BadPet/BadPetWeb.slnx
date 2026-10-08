@@ -1,8 +1,4 @@
 <Solution>
-  <Folder Name="/Aspire/">
-    <Project Path="BadPetWeb.AppHost/BadPetWeb.AppHost.csproj" Id="956164ea-a109-4327-9b92-f6f167435f64" />
-    <Project Path="BadPetWeb.ServiceDefaults/BadPetWeb.ServiceDefaults.csproj" />
-  </Folder>
   <Folder Name="/Tools/">
     <Project Path="../Tools/Toolbox.Razor/Toolbox.Razor.csproj" />
     <Project Path="../Tools/Toolbox.test/Toolbox.test.csproj" />
@@ -10,5 +6,4 @@
   </Folder>
   <Project Path="../CivillyInsane/CivillyInsaneWeb/CivillyInsaneWeb.csproj" />
   <Project Path="../MarketPlace/MarketPlace.csproj" Id="7c79ade5-34f9-4358-9c26-6cb88dc8cb0b" />
-  <Project Path="BadPetWeb/BadPetWeb.csproj" />
 </Solution>

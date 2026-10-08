@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\MarketPlace\MarketPlace.csproj" />
-    <ProjectReference Include="..\BadPetWeb.ServiceDefaults\BadPetWeb.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\Tools\Toolbox.Razor\Toolbox.Razor.csproj" />
     <ProjectReference Include="..\..\Tools\Toolbox\Toolbox.csproj" />
   </ItemGroup>
