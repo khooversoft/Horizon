@@ -1,0 +1,68 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="@BlackOrange.Theme" IsDarkMode="false" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Fixed="true"
+               Dense="false"
+               Elevation="0"
+               Gutters="true">
+
+        <MudImage Src="civilly-insane-icon.png" Style="height: var(--mud-appbar-height); width: auto; object-fit: contain;" />
+
+        <MudSpacer />
+
+        <MudTextField @bind-Value="_search"
+                      Variant="Variant.Outlined"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Margin="Margin.Dense"
+                      Clearable="true"
+                      Style="background-color: white" />
+
+        <MudSpacer />
+        <MudIconButton Icon="@LeftPanelOpenCloseIcon()" OnClick="OpenCloseLeftPanel" aria-label="Toggle navigation" />
+        <MudIconButton Icon="@Icons.Material.Outlined.Notifications" aria-label="Notifications" />
+        <MudIconButton Icon="@Icons.Material.Outlined.Settings" aria-label="Settings" />
+        <MudIconButton Icon="@Icons.Material.Outlined.QuestionMark" aria-label="Help" />
+        <MudIconButton Icon="@Icons.Material.Outlined.Login" aria-label="Sign in" />
+        <MudFab StartIcon="@Icons.Material.Outlined.Person"
+                Size="Size.Small"
+                Variant="Variant.Text"
+                Style="background-color: rgba(200, 200, 200, .8); color:white"
+                aria-label="Profile" />
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_leftMenuOpen"
+               Variant="DrawerVariant.Persistent"
+               Breakpoint="Breakpoint.None"
+               ClipMode="DrawerClipMode.Always"
+               Width="75px"
+               Style="padding: 0px">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent Class="main-body">
+        <div class="body-wrapper">
+            @Body
+        </div>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private string? _search;
+    private bool _leftMenuOpen = false;
+
+    private string LeftPanelOpenCloseIcon() => _leftMenuOpen ? MaterialSymbols.Outlined.LeftPanelClose : MaterialSymbols.Outlined.LeftPanelOpen;
+
+    private void OpenCloseLeftPanel() => _leftMenuOpen = !_leftMenuOpen;
+}

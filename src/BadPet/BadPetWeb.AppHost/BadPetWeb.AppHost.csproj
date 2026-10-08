@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\CivillyInsane\CivillyInsaneWeb\CivillyInsaneWeb.csproj" />
     <ProjectReference Include="..\BadPetWeb\BadPetWeb.csproj" />
   </ItemGroup>
 
