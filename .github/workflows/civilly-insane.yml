@@ -47,9 +47,9 @@ jobs:
     - name: Azure Login
       uses: azure/login@v2
       with:
-        client-id: ${{ vars.civilly_insane_CLIENT_ID_CE88 }}
-        tenant-id: ${{ vars.civilly_insane_TENANT_ID_CE88 }}
-        subscription-id: ${{ vars.civilly_insane_SUBSCRIPTION_ID_CE88 }}
+        client-id: ${{ secrets.civilly_insane_CLIENT_ID_CE88 }}
+        tenant-id: ${{ secrets.civilly_insane_TENANT_ID_CE88 }}
+        subscription-id: ${{ secrets.civilly_insane_SUBSCRIPTION_ID_CE88 }}
     - name: Deploy to Azure WebApp
       uses: azure/webapps-deploy@v2
       with:
