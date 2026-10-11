@@ -4,5 +4,6 @@
     <Project Path="../Tools/Toolbox.test/Toolbox.test.csproj" />
     <Project Path="../Tools/Toolbox/Toolbox.csproj" />
   </Folder>
+  <Project Path="CivillyInsane.sdk/CivillyInsane.sdk.csproj" Id="518f3be7-6cf3-4618-9006-74148a15fa87" />
   <Project Path="CivillyInsaneWeb/CivillyInsaneWeb.csproj" />
 </Solution>

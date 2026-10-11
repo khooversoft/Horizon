@@ -21,20 +21,4 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="cpc4n">
-      <HintPath>..\..\ExternalAssemblies\SAP\cpc4n.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="sapnco">
-      <HintPath>..\..\ExternalAssemblies\SAP\sapnco.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="sapnco_utils">
-      <HintPath>..\..\ExternalAssemblies\SAP\sapnco_utils.dll</HintPath>
-      <Private>True</Private>
-	</Reference>
-	<!-- ijwhost.dll is a native (unmanaged) DLL — use None so MSBuild copies it correctly -->
-  </ItemGroup>
-
 </Project>

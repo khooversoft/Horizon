@@ -1,8 +1,17 @@
 ﻿<MudPaper Elevation="6" Square="true" Style="height:100%; display:flex; flex-direction:column; background-color: var(--tool-background-color-frame); width: 72px; margin-left:1px">
     <ToolNavBar Style="margin-top:11px; flex:1;">
         <ToolNavButton Lines="@(["Home"])" Icon="@Icons.Material.Outlined.Home" Href="/" />
-        <ToolNavButton Lines="@(["Counter"])" Icon="@Icons.Material.Outlined.AddBox" Href="/counter" />
-        <ToolNavButton Lines="@(["Weather"])" Icon="@Icons.Material.Outlined.Cloud" Href="/weather" />
+        <ToolNavButton Lines="@(["Settings"])" Icon="@Icons.Material.Outlined.Settings" Href="/settings" />
+
+        <AuthorizeView>
+            <Authorized>
+                <ToolNavButton Lines="@(["Log out"])" Icon="@Icons.Material.Outlined.Logout" Href="/account/logout" />
+            </Authorized>
+            <NotAuthorized>
+                <ToolNavButton Lines="@(["Sign in"])" Icon="@Icons.Material.Outlined.Login" Href="/account/login" />
+            </NotAuthorized>
+        </AuthorizeView>
+        <ToolNavButton Lines="@(["Help"])" Icon="@Icons.Material.Outlined.Help" Href="/Help" />
     </ToolNavBar>
 </MudPaper>
 

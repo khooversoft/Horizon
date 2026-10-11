@@ -1,0 +1,13 @@
+@page "/account/login"
+@inject NavigationManager Navigation
+
+<PageTitle>Log in</PageTitle>
+
+<MudText Typo="Typo.body1">Redirecting to sign in...</MudText>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+    }
+}

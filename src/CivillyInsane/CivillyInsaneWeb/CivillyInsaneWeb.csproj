@@ -1,19 +1,24 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+        <UserSecretsId>civilly-insane-web-secrets</UserSecretsId>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MudBlazor" Version="9.11.0" />
-    <PackageReference Include="MudBlazor.FontIcons.MaterialSymbols" Version="1.5.0" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Identity.Web" Version="4.16.0" />
+        <PackageReference Include="Microsoft.Identity.Web.UI" Version="4.16.0" />
+        <PackageReference Include="MudBlazor" Version="9.11.0" />
+        <PackageReference Include="MudBlazor.FontIcons.MaterialSymbols" Version="1.5.0" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\Tools\Toolbox.Razor\Toolbox.Razor.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\Tools\Toolbox.Razor\Toolbox.Razor.csproj" />
+        <ProjectReference Include="..\..\Tools\Toolbox\Toolbox.csproj" />
+        <ProjectReference Include="..\CivillyInsane.sdk\CivillyInsane.sdk.csproj" />
+    </ItemGroup>
 
 </Project>

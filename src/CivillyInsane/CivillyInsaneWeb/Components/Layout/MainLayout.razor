@@ -1,4 +1,6 @@
-﻿@inherits LayoutComponentBase
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inherits LayoutComponentBase
 
 <MudThemeProvider Theme="@BlackOrange.Theme" IsDarkMode="false" />
 <MudPopoverProvider />
@@ -10,6 +12,8 @@
                Dense="false"
                Elevation="0"
                Gutters="true">
+
+        <MudIconButton Icon="@Icons.Material.Outlined.Menu" OnClick="OpenCloseLeftPanel" aria-label="Toggle navigation" />
 
         <MudImage Src="civilly-insane-icon.png" Style="height: 50px; width: auto; object-fit: contain;" />
 
@@ -24,16 +28,25 @@
                       Style="background-color: white" />
 
         <MudSpacer />
-        <MudIconButton Icon="@LeftPanelOpenCloseIcon()" OnClick="OpenCloseLeftPanel" aria-label="Toggle navigation" />
-        <MudIconButton Icon="@Icons.Material.Outlined.Notifications" aria-label="Notifications" />
-        <MudIconButton Icon="@Icons.Material.Outlined.Settings" aria-label="Settings" />
-        <MudIconButton Icon="@Icons.Material.Outlined.QuestionMark" aria-label="Help" />
-        <MudIconButton Icon="@Icons.Material.Outlined.Login" aria-label="Sign in" />
-        <MudFab StartIcon="@Icons.Material.Outlined.Person"
+
+        <AuthorizeView>
+            <Authorized>
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudText Typo="@Typo.body2" Style="color: white">@GetUserEmail(context.User)</MudText>
+                    <MudButton Style="color: white" StartIcon="@Icons.Material.Outlined.Logout" Href="/account/logout">Log out</MudButton>
+                </MudStack>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Style="color: white" StartIcon="@Icons.Material.Outlined.Login" Href="/account/login">Log in</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        @*         <MudFab StartIcon="@Icons.Material.Outlined.Person"
                 Size="Size.Small"
                 Variant="Variant.Text"
                 Style="background-color: rgba(200, 200, 200, .8); color:white"
                 aria-label="Profile" />
+ *@
     </MudAppBar>
 
     <MudDrawer @bind-Open="_leftMenuOpen"
@@ -62,7 +75,8 @@
     private string? _search;
     private bool _leftMenuOpen = false;
 
-    private string LeftPanelOpenCloseIcon() => _leftMenuOpen ? MaterialSymbols.Outlined.LeftPanelClose : MaterialSymbols.Outlined.LeftPanelOpen;
+    private static string? GetUserEmail(ClaimsPrincipal user) => user.Identity?.Name;
 
     private void OpenCloseLeftPanel() => _leftMenuOpen = !_leftMenuOpen;
 }
+
