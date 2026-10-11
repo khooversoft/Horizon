@@ -32,8 +32,9 @@
         <AuthorizeView>
             <Authorized>
                 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                    <MudText Typo="@Typo.body2" Style="color: white">@GetUserEmail(context.User)</MudText>
-                    <MudButton Style="color: white" StartIcon="@Icons.Material.Outlined.Logout" Href="/account/logout">Log out</MudButton>
+                    <MudText Class="d-none d-sm-block" Typo="@Typo.body2" Style="color: white">@GetUserEmail(context.User)</MudText>
+                    <MudIconButton Class="d-sm-none" Style="color: white" Icon="@Icons.Material.Outlined.Logout" Href="/account/logout" aria-label="Log out" />
+                    <MudButton Class="d-none d-sm-inline-flex" Style="color: white" StartIcon="@Icons.Material.Outlined.Logout" Href="/account/logout">Log out</MudButton>
                 </MudStack>
             </Authorized>
             <NotAuthorized>
