@@ -8,6 +8,22 @@
     box-sizing: border-box;
 }
 
+.header-search {
+    display: contents;
+}
+
+@media (width < 800px) {
+    .header-search {
+        display: none;
+    }
+}
+
+@media (width < 1200px) {
+    .header-userName {
+        display: none;
+    }
+}
+
 @media (max-width: 1279.95px) {
     .body-wrapper {
         max-width: 1100px;

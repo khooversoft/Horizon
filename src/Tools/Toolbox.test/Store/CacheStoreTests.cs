@@ -11,7 +11,7 @@ public class CacheStoreTests
     public void Upsert_ShouldStoreValue()
     {
         using var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var subject = new CacheStore(memoryCache, NullLogger<CacheStore>.Instance);
+        var subject = new CacheStore(memoryCache);
 
         subject.Upsert("key-1", "value-1");
 
@@ -23,7 +23,7 @@ public class CacheStoreTests
     public void Upsert_ShouldOverwriteExistingValue()
     {
         using var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var subject = new CacheStore(memoryCache, NullLogger<CacheStore>.Instance);
+        var subject = new CacheStore(memoryCache);
 
         subject.Upsert("key-1", "value-1");
         subject.Upsert("key-1", "value-2");
@@ -36,7 +36,7 @@ public class CacheStoreTests
     public void Remove_ShouldDeleteExistingValue()
     {
         using var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var subject = new CacheStore(memoryCache, NullLogger<CacheStore>.Instance);
+        var subject = new CacheStore(memoryCache);
 
         subject.Upsert("key-1", "value-1");
         subject.Remove("key-1");
@@ -49,7 +49,7 @@ public class CacheStoreTests
     public async Task Upsert_ShouldHonorAbsoluteExpiration()
     {
         using var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var subject = new CacheStore(memoryCache, NullLogger<CacheStore>.Instance);
+        var subject = new CacheStore(memoryCache);
 
         subject.Upsert("key-1", "value-1", DateTimeOffset.UtcNow.AddMilliseconds(50));
 

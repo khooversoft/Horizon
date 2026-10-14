@@ -1,0 +1,33 @@
+﻿@inject ShoppingCartService _shoppingCartService;
+
+<MudCard Style="width: 300px; max-width: 100%; height: 370px; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+
+    <MudCardMedia Image="@ImageUrl" Style="height: auto; aspect-ratio: 4 / 3; flex-shrink: 0; background-size: contain; background-repeat: no-repeat;" />
+
+    <MudCardContent Style="flex: 1; min-height: 0; overflow: hidden;">
+        @* <MudText Typo="Typo.body1" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@Product.ProductName">@Product.ProductName</MudText> *@
+        <MudText Typo="Typo.body2" Style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;" title="@Product.Description">@Product.Description</MudText>
+        <MudRating MaxValue="5" ReadOnly="true" Size="Size.Small" />
+    </MudCardContent>
+
+    <MudCardActions Style="flex-shrink: 0;">
+        <MudText>@Product.GetFirstPrice()</MudText>
+        <MudIconButton Icon="@MaterialSymbols.Outlined.AddShoppingCart" Color="Color.Default" OnClick="@(() => _shoppingCartService.AddToCart(Product.ProductId, 1))" />
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter] public ProductDetailRecord Product { get; set; } = null!;
+
+    private string? ImageUrl
+    {
+        get
+        {
+            var imageId = Product.Prices.SelectMany(x => x.Images).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+            return imageId is null ? null : ImageApiService.BuildApiPath(Product.ProductId, imageId);
+        }
+    }
+
+    // If the user clicks on the card, navigate to the product detail page
+    // Product detail page is at /products/{productId}
+}

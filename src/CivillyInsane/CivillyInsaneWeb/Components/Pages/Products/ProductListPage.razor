@@ -1,0 +1,19 @@
+﻿@page "/products"
+@inject ProductStoreActor productStoreActor
+@inject NavigationManager _nav
+
+<MudStack Row="true" Wrap="Wrap.Wrap" Style="margin:10px">
+    @foreach (var product in _products)
+    {
+        <ProductCard @key="product.ProductId" Product="@product" />
+    }
+</MudStack>
+
+@code {
+    private List<ProductDetailRecord> _products { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _products = (await productStoreActor.GetAll()).ToList();
+    }
+}

@@ -21,4 +21,8 @@
         <ProjectReference Include="..\CivillyInsane.sdk\CivillyInsane.sdk.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Components\Controls\" />
+    </ItemGroup>
+
 </Project>

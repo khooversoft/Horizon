@@ -8,13 +8,8 @@ namespace Toolbox.Store;
 public class CacheStore
 {
     private readonly IMemoryCache _memoryCache;
-    private readonly ILogger<CacheStore> _logger;
 
-    public CacheStore(IMemoryCache memoryCache, ILogger<CacheStore> logger)
-    {
-        _memoryCache = memoryCache.NotNull();
-        _logger = logger.NotNull();
-    }
+    public CacheStore(IMemoryCache memoryCache) => _memoryCache = memoryCache.NotNull();
 
     public void Upsert<T>(string key, T value, DateTimeOffset? expiration = null)
     {

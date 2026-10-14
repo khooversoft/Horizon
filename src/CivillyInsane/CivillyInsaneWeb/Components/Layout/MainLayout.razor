@@ -15,24 +15,29 @@
 
         <MudIconButton Icon="@Icons.Material.Outlined.Menu" OnClick="OpenCloseLeftPanel" aria-label="Toggle navigation" />
 
-        <MudImage Src="civilly-insane-icon.png" Style="height: 50px; width: auto; object-fit: contain;" />
+        <MudImage Src="civilly-insane-header-transparent-100px.png" Style="height: 60px; width: auto; object-fit: contain;" />
 
         <MudSpacer />
 
-        <MudTextField @bind-Value="_search"
-                      Variant="Variant.Outlined"
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Outlined.Search"
-                      Margin="Margin.Dense"
-                      Clearable="true"
-                      Style="background-color: white" />
+        <div class="header-search">
+            <MudTextField @bind-Value="_search"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Search"
+                          Margin="Margin.Dense"
+                          Clearable="true"
+                          Style="background-color: white" />
 
-        <MudSpacer />
+            <MudSpacer />
+        </div>
 
         <AuthorizeView>
             <Authorized>
                 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                    <MudText Class="d-none d-sm-block" Typo="@Typo.body2" Style="color: white">@GetUserEmail(context.User)</MudText>
+@*                     <div class="header-userName">
+                        <MudText Class="d-none d-sm-block" Typo="@Typo.body2" Style="color: white">@GetUserEmail(context.User)</MudText>
+                    </div> *@
+
                     <MudIconButton Class="d-sm-none" Style="color: white" Icon="@Icons.Material.Outlined.Logout" Href="/account/logout" aria-label="Log out" />
                     <MudButton Class="d-none d-sm-inline-flex" Style="color: white" StartIcon="@Icons.Material.Outlined.Logout" Href="/account/logout">Log out</MudButton>
                 </MudStack>

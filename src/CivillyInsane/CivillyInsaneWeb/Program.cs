@@ -3,10 +3,14 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
 using MudBlazor.Services;
+using Toolbox;
 using Toolbox.Data;
 using Toolbox.Extensions;
 using Toolbox.Tools;
 using Toolbox.Types;
+using CivillyInsane.sdk;
+using CivillyInsane.sdk.Actors;
+using CivillyInsane.sdk.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,8 +53,8 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddMudServices();
 
 // Site services
-//builder.Services.AddDatalakeFileStore(datalakeOption);
-//builder.Services.AddCivillyInsaneServices();
+builder.Services.AddDatalakeFileStore(datalakeOption);
+builder.Services.AddCivillyInsaneServices();
 
 var app = builder.Build();
 
@@ -78,5 +82,10 @@ app.MapStaticAssets();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+ImageApiService.RegisterApi(app);
+
+//var actor = app.Services.GetRequiredService<ProductStoreActor>();
+//await CivillyInsane.sdk.TestData.ProductTestData.UpsertAll(actor, app.Environment.WebRootFileProvider);
 
 app.Run();
