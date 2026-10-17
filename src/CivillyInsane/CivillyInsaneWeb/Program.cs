@@ -85,7 +85,7 @@ app.MapRazorComponents<App>()
 
 ImageApiService.RegisterApi(app);
 
-//var actor = app.Services.GetRequiredService<ProductStoreActor>();
-//await CivillyInsane.sdk.TestData.ProductTestData.UpsertAll(actor, app.Environment.WebRootFileProvider);
+var actor = app.Services.GetRequiredService<ProductStoreActor>();
+await CivillyInsane.sdk.TestData.ProductTestData.UpsertAll(actor, app.Environment.WebRootFileProvider);
 
 app.Run();

@@ -1,10 +1,21 @@
 ﻿@page "/"
+@attribute [StreamRendering]
 @inject NavigationManager Navigation
+@inject ProductStoreActor _productStoreActor
 
 <PageTitle>Home</PageTitle>
 
-
-
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-16">
+    <MudPaper Outlined="true" Elevation="0" Class="pa-8 rounded-xl">
+        <MudStack AlignItems="AlignItems.Center" Spacing="3" Style="text-align: center;" role="status" aria-live="polite" aria-busy="true">
+            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Primary" Size="Size.Large" />
+            <MudText Typo="Typo.h4">Getting your wild side ready…</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Please wait while we initialize the store and load the latest styles.</MudText>
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" aria-label="Initializing the store" />
+            <MudText Typo="Typo.caption">Bold tees. Worth the wait.</MudText>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
 @* <MudStack AlignItems="AlignItems.Start" Spacing="3" Style="margin: 20px; text-align: center;">
     <MudImage Src="civilly-insane.png"
               Alt="Civilly Insane"
@@ -15,8 +26,9 @@
  *@
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        await _productStoreActor.GetAll();
         Navigation.NavigateTo("/products", replace: true);
     }
 }

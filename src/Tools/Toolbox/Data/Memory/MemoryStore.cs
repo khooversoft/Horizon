@@ -153,7 +153,7 @@ public partial class MemoryStore
         return result.Count > 0 ? StatusCode.OK : StatusCode.NotFound;
     }
 
-    public bool Exist(string path) => _store.ContainsKey(path);
+    public bool Exists(string path) => _store.ContainsKey(path);
 
     public Option<DataETag> Get(string path)
     {

@@ -25,7 +25,7 @@ public static class ProductTestData
     // Reference the stored image by its filename in the price detail's Images collection.
     // Upsert the product record and check both image and product upsert results for success.
     //
-    public static async Task UpsertAll(ProductStoreActor actor, IFileProvider webRootFileProvider)
+    public static async Task UpsertAll(ProductStoreActor actor, IFileProvider webRootFileProvider, bool force = false)
     {
         actor.NotNull();
         webRootFileProvider.NotNull();
@@ -37,6 +37,8 @@ public static class ProductTestData
             productId = Regex.Replace(productId, @"^[0-9]+_", string.Empty);
             var productName = productId.Replace('-', ' ').Replace('_', ' ');
             productName = char.ToUpperInvariant(productName[0]) + productName[1..];
+
+            if (!force && (await actor.Exists(productId, imageName)).IsOk()) continue;
 
             await LoadImage(actor, productId, $"images/{imageName}", webRootFileProvider);
             var product = CreateProduct(productId, productName, [imageName]);

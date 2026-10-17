@@ -8,6 +8,7 @@ public interface IFileStore
     Task<Option<string>> Add(string path, DataETag data);
     Task<Option> CreateFolder(string path);
     Task<Option> Delete(string path);
+    Task<Option> Exists(string key);
     Task<Option> SearchDelete(string pattern);
     Task<Option<DataETag>> Get(string path);
     Task<IReadOnlyList<StorePathDetail>> Search(string pattern, bool includeFolder = false);

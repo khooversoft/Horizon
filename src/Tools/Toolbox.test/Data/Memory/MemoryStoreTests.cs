@@ -49,7 +49,7 @@ public class MemoryStoreTests
         result.BeOk();
         result.Return().NotEmpty();
 
-        ms.Exist(path).BeTrue();
+        ms.Exists(path).BeTrue();
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class MemoryStoreTests
 
         var result = ms.Set(path, data, null);
         result.BeOk();
-        ms.Exist(path).BeTrue();
+        ms.Exists(path).BeTrue();
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class MemoryStoreTests
         var result = ms.Delete(path, null);
 
         result.BeOk();
-        ms.Exist(path).BeFalse();
+        ms.Exists(path).BeFalse();
     }
 
     [Fact]
@@ -165,7 +165,7 @@ public class MemoryStoreTests
 
         var result = ms.Append(path, data, null);
         result.BeOk();
-        ms.Exist(path).BeTrue();
+        ms.Exists(path).BeTrue();
     }
 
     [Fact]
@@ -224,7 +224,7 @@ public class MemoryStoreTests
         ms.SearchDelete("folder/*");
 
         ms.Search("*").Count.Be(1);
-        ms.Exist("other/file3.txt").BeTrue();
+        ms.Exists("other/file3.txt").BeTrue();
     }
 
     [Fact]
@@ -285,9 +285,9 @@ public class MemoryStoreTests
         ms.Add("Case/File.txt", new DataETag("upper".ToBytes())).BeOk();
         ms.Add("case/file.txt", new DataETag("lower".ToBytes())).BeOk();
 
-        ms.Exist("Case/File.txt").BeTrue();
-        ms.Exist("case/file.txt").BeTrue();
-        ms.Exist("CASE/File.txt").BeFalse();
+        ms.Exists("Case/File.txt").BeTrue();
+        ms.Exists("case/file.txt").BeTrue();
+        ms.Exists("CASE/File.txt").BeFalse();
 
         ms.Search("Case/*").Select(x => x.Path).ToArray().Be(["Case/File.txt"]);
         ms.Search("case/*").Select(x => x.Path).ToArray().Be(["case/file.txt"]);
@@ -295,8 +295,8 @@ public class MemoryStoreTests
 
         ms.SearchDelete("Case/*").BeOk();
 
-        ms.Exist("Case/File.txt").BeFalse();
-        ms.Exist("case/file.txt").BeTrue();
+        ms.Exists("Case/File.txt").BeFalse();
+        ms.Exists("case/file.txt").BeTrue();
     }
 
     [Fact]

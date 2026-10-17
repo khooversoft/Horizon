@@ -22,6 +22,7 @@ public class InMemoryFileStore : IFileStore
     public Task<Option<string>> Add(string path, DataETag data) => _memoryStore.Add(path.NotEmpty(), data.NotNull()).ToTaskResult();
     public Task<Option> CreateFolder(string path) => _memoryStore.CreateFolder(path.NotEmpty()).ToTaskResult();
     public Task<Option> Delete(string path) => _memoryStore.Delete(path, null).ToTaskResult();
+    public Task<Option> Exists(string key) => new Option(_memoryStore.Exists(key.NotEmpty()) ? StatusCode.OK : StatusCode.NotFound).ToTaskResult();
     public Task<Option<DataETag>> Get(string path) => _memoryStore.Get(path.NotEmpty()).ToTaskResult();
     public Task<IReadOnlyList<StorePathDetail>> Search(string pattern, bool includeFolder = false) => _memoryStore.Search(pattern.NotEmpty(), includeFolder).ToTaskResult();
     public Task<Option> SearchDelete(string pattern) => _memoryStore.SearchDelete(pattern.NotEmpty()).ToTaskResult();

@@ -19,6 +19,7 @@ public class FileStoreNamespaceTests
         public Task<Option<DataETag>> Get(string path) => throw new NotSupportedException();
         public Task<IReadOnlyList<StorePathDetail>> Search(string pattern, bool includeFolder = false) => Task.FromResult(result);
         public Task<Option<string>> Upsert(string path, DataETag data) => throw new NotSupportedException();
+        public Task<Option> Exists(string key) => throw new NotImplementedException();
     }
 
     [Fact]

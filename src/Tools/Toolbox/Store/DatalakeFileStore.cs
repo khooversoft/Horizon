@@ -27,8 +27,13 @@ public class DatalakeFileStore : IFileStore, IDisposable
     }
 
     public async Task<Option<string>> Add(string path, DataETag data) => await Mutate(path, () => _datalakeStore.Add(path, data));
+
     public async Task<Option> CreateFolder(string path) => await _datalakeStore.CreateFolder(path);
+
     public async Task<Option> Delete(string path) => await Mutate(path, () => _datalakeStore.Delete(path));
+
+    public async Task<Option> Exists(string key) => await _datalakeStore.Exists(key);
+
     public async Task<Option<DataETag>> Get(string path)
     {
         if (_memoryCache == null) return await _datalakeStore.Get(path);
@@ -110,4 +115,5 @@ public class DatalakeFileStore : IFileStore, IDisposable
         _cacheInvalidation.Dispose();
         _cacheLock.Dispose();
     }
+
 }

@@ -35,6 +35,8 @@ public class FileStoreNamespace : IFileStore
 
     public Task<Option> Delete(string pathOrPattern) => _fileStore.Delete(BuildPath(pathOrPattern));
 
+    public async Task<Option> Exists(string key) => await _fileStore.Exists(BuildPath(key));
+
     public Task<Option<DataETag>> Get(string path) => _fileStore.Get(BuildPath(path));
 
     public async Task<IReadOnlyList<StorePathDetail>> Search(string pattern, bool includeFolder = false)

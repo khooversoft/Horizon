@@ -17,9 +17,9 @@
 
     <ItemGroup>
         <PackageReference Include="Azure.Identity" Version="1.21.0" />
-        <PackageReference Include="MudBlazor" Version="9.10.0" />
+        <PackageReference Include="MudBlazor" Version="9.11.0" />
         <PackageReference Include="MudBlazor.FontIcons.MaterialSymbols" Version="1.5.0" />
-        <PackageReference Include="MudBlazor.Markdown" Version="9.0.0" />
+        <PackageReference Include="MudBlazor.Markdown" Version="9.10.0" />
     </ItemGroup>
 
     <ItemGroup>

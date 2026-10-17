@@ -3,17 +3,19 @@
 @inject NavigationManager _nav
 
 <MudStack Row="true" Wrap="Wrap.Wrap" Style="margin:10px">
-    @foreach (var product in _products)
+    @foreach (var product in Products ?? [])
     {
         <ProductCard @key="product.ProductId" Product="@product" />
     }
 </MudStack>
 
 @code {
-    private List<ProductDetailRecord> _products { get; set; } = new();
+    // Restore the prerendered list before interactive initialization so cards aren't removed and recreated.
+    [PersistentState]
+    public List<ProductDetailRecord>? Products { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        _products = (await productStoreActor.GetAll()).ToList();
+        Products ??= (await productStoreActor.GetAll()).ToList();
     }
 }
