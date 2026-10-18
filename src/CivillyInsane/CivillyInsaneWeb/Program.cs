@@ -53,7 +53,8 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddMudServices();
 
 // Site services
-builder.Services.AddDatalakeFileStore(datalakeOption);
+//builder.Services.AddDatalakeFileStore(datalakeOption);
+builder.Services.AddDatalakeStore(datalakeOption);
 builder.Services.AddCivillyInsaneServices();
 
 var app = builder.Build();
@@ -84,8 +85,6 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 ImageApiService.RegisterApi(app);
-
-var actor = app.Services.GetRequiredService<ProductStoreActor>();
-await CivillyInsane.sdk.TestData.ProductTestData.UpsertAll(actor, app.Environment.WebRootFileProvider);
+_ = app.Services.GetRequiredService<ProductStoreActor>().Initialize(app.Environment.WebRootFileProvider);
 
 app.Run();

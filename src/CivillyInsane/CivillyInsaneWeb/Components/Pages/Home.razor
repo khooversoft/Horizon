@@ -28,7 +28,8 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        await _productStoreActor.GetAll();
+        // if (_productStoreActor.InitializationTask != null) await _productStoreActor.InitializationTask;
+
         Navigation.NavigateTo("/products", replace: true);
     }
 }

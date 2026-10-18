@@ -1,5 +1,4 @@
-﻿using System.Collections.Immutable;
-using Microsoft.Extensions.Caching.Memory;
+﻿using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Primitives;
 using Toolbox.Data;
 using Toolbox.Tools;
@@ -7,44 +6,40 @@ using Toolbox.Types;
 
 namespace Toolbox.Store;
 
-public class DatalakeFileStore : IFileStore, IDisposable
+public class FileStoreCache : IFileStore, IDisposable
 {
     private static readonly TimeSpan _cacheLifetime = TimeSpan.FromMinutes(5);
-    private readonly DatalakeStore _datalakeStore;
-    private readonly IMemoryCache? _memoryCache;
-    private readonly DatalakeOption? _datalakeOption;
+    private readonly IFileStore _fileStore;
+    private readonly IMemoryCache _memoryCache;
+    private readonly DatalakeOption _datalakeOption;
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
     private CancellationTokenSource _cacheInvalidation = new();
     private int _disposed;
 
-    public DatalakeFileStore(DatalakeStore datalakeStore) => _datalakeStore = datalakeStore.NotNull();
-
-    public DatalakeFileStore(DatalakeStore datalakeStore, IMemoryCache memoryCache, DatalakeOption datalakeOption)
+    public FileStoreCache(IFileStore fileStore, IMemoryCache memoryCache, DatalakeOption datalakeOption)
     {
-        _datalakeStore = datalakeStore.NotNull();
+        _fileStore = fileStore.NotNull();
         _memoryCache = memoryCache.NotNull();
         _datalakeOption = datalakeOption.NotNull();
     }
 
-    public async Task<Option<string>> Add(string path, DataETag data) => await Mutate(path, () => _datalakeStore.Add(path, data));
+    public async Task<Option<string>> Add(string path, DataETag data) => await Mutate(path, () => _fileStore.Add(path, data));
 
-    public async Task<Option> CreateFolder(string path) => await _datalakeStore.CreateFolder(path);
+    public async Task<Option> CreateFolder(string path) => await _fileStore.CreateFolder(path);
 
-    public async Task<Option> Delete(string path) => await Mutate(path, () => _datalakeStore.Delete(path));
+    public async Task<Option> Delete(string path) => await Mutate(path, () => _fileStore.Delete(path));
 
-    public async Task<Option> Exists(string key) => await _datalakeStore.Exists(key);
+    public async Task<Option> Exists(string key) => await _fileStore.Exists(key);
 
     public async Task<Option<DataETag>> Get(string path)
     {
-        if (_memoryCache == null) return await _datalakeStore.Get(path);
-
         var key = GetCacheKey(path);
         await _cacheLock.WaitAsync();
         try
         {
             if (_memoryCache.TryGetValue(key, out DataETag? cached) && cached != null) return cached;
 
-            var result = await _datalakeStore.Get(path);
+            var result = await _fileStore.Get(path);
             if (result.IsOk() && result.HasValue)
             {
                 var options = new MemoryCacheEntryOptions()
@@ -62,20 +57,15 @@ public class DatalakeFileStore : IFileStore, IDisposable
         }
     }
 
-    public async Task<IReadOnlyList<StorePathDetail>> Search(string path, bool includeFolder = false)
-    {
-        var result = await _datalakeStore.Search(path, includeFolder: includeFolder);
-        return result.Select(x => x.ConvertTo()).ToImmutableArray();
-    }
+    public async Task<IReadOnlyList<StorePathDetail>> Search(string path, bool includeFolder = false) =>
+        await _fileStore.Search(path, includeFolder);
 
     public async Task<Option> SearchDelete(string pattern)
     {
-        if (_memoryCache == null) return await _datalakeStore.SearchDelete(pattern);
-
         await _cacheLock.WaitAsync();
         try
         {
-            return await _datalakeStore.SearchDelete(pattern);
+            return await _fileStore.SearchDelete(pattern);
         }
         finally
         {
@@ -86,12 +76,10 @@ public class DatalakeFileStore : IFileStore, IDisposable
         }
     }
 
-    public async Task<Option<string>> Upsert(string path, DataETag data) => await Mutate(path, () => _datalakeStore.Upsert(path, data));
+    public async Task<Option<string>> Upsert(string path, DataETag data) => await Mutate(path, () => _fileStore.Upsert(path, data));
 
     private async Task<T> Mutate<T>(string path, Func<Task<T>> action)
     {
-        if (_memoryCache == null) return await action();
-
         var key = GetCacheKey(path);
         await _cacheLock.WaitAsync();
         try
@@ -105,7 +93,7 @@ public class DatalakeFileStore : IFileStore, IDisposable
         }
     }
 
-    private (DatalakeFileStore, string) GetCacheKey(string path) => (this, _datalakeOption!.WithBasePath(path.NotEmpty()));
+    private (FileStoreCache, string) GetCacheKey(string path) => (this, _datalakeOption.WithBasePath(path.NotEmpty()));
 
     public void Dispose()
     {
@@ -115,5 +103,4 @@ public class DatalakeFileStore : IFileStore, IDisposable
         _cacheInvalidation.Dispose();
         _cacheLock.Dispose();
     }
-
 }

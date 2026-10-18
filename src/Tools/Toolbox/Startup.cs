@@ -31,37 +31,17 @@ public static class Startup
         return services;
     }
 
-    public static IServiceCollection AddCacheClient(this IServiceCollection services, Func<string, string> getKey, TimeSpan cacheTime)
+    public static IServiceCollection AddFileStore(this IServiceCollection services, string storeName, Action<FileStoreBuilder> factory)
     {
         services.NotNull();
-        getKey.NotNull();
+        storeName.NotEmpty();
+        factory.NotNull();
 
-        services.AddMemoryCache();
-        services.TryAddSingleton<ICacheClient>(services => ActivatorUtilities.CreateInstance<CacheClient>(services, getKey, cacheTime));
-        return services;
-    }
-
-    public static IServiceCollection AddCacheClient<T>(this IServiceCollection services, Func<string, string> getKey, TimeSpan cacheTime)
-    {
-        services.NotNull();
-        getKey.NotNull();
-
-        services.AddMemoryCache();
-        services.TryAddSingleton<ICacheClient<T>>(services => ActivatorUtilities.CreateInstance<CacheClient<T>>(services, getKey, cacheTime));
-        return services;
-    }
-
-    public static IServiceCollection AddDatalakeFileStore(this IServiceCollection services, DatalakeOption datalakeOption)
-    {
-        datalakeOption.NotNull();
-        datalakeOption.Validate().ThrowOnError("Invalid DatalakeOption");
-
-        services.AddDatalakeStore(datalakeOption);
-
-        services.AddSingleton<IFileStore>(services =>
+        services.AddKeyedSingleton<IFileStore>(storeName, (service, _) =>
         {
-            var datalakeStore = ActivatorUtilities.CreateInstance<DatalakeStore>(services, datalakeOption);
-            return ActivatorUtilities.CreateInstance<DatalakeFileStore>(services, datalakeStore);
+            var builder = new FileStoreBuilder();
+            factory(builder);
+            return builder.Build(service, storeName);
         });
 
         return services;
@@ -85,13 +65,6 @@ public static class Startup
             return ActivatorUtilities.CreateInstance<FileStoreNamespace>(services, fileNamespace, backingStore);
         });
 
-        return services;
-    }
-
-    public static IServiceCollection AddCacheStore(this IServiceCollection services)
-    {
-        services.AddMemoryCache();
-        services.TryAddSingleton<CacheStore>();
         return services;
     }
 }

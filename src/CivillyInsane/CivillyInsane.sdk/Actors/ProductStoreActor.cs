@@ -6,6 +6,7 @@ using System.Text;
 using CivillyInsane.sdk.Application;
 using CivillyInsane.sdk.Models.Product;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Toolbox.Data;
 using Toolbox.Extensions;
 using Toolbox.Tools;
@@ -19,12 +20,15 @@ public class ProductStoreActor
     private readonly IFileStore _fileStore;
     private readonly ConcurrentHashSet<string> _productIdCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
+    private readonly object _initializationLock = new();
     private bool _cacheInitialized;
 
     public ProductStoreActor([FromKeyedServices(StoreConfig.ProductStoreName)] IFileStore fileStore)
     {
         _fileStore = fileStore.NotNull();
     }
+
+    public Task? InitializationTask;
 
     public async Task<bool> Delete(string productId)
     {
@@ -71,39 +75,21 @@ public class ProductStoreActor
 
     public async Task<IReadOnlyList<ProductDetailRecord>> GetAll()
     {
-        string[] productIds;
         await _cacheLock.WaitAsync();
         try
         {
             if (!_cacheInitialized)
             {
-                var entries = await _fileStore.Search("**/*.product.json");
-                var ids = entries.Select(x => x.Path[..x.Path.LastIndexOf('/')]).ToArray();
-                _productIdCache.Clear();
-                foreach (string productId in ids) _productIdCache.Add(productId);
+                await LoadDirectory();
                 _cacheInitialized = true;
             }
-
-            productIds = _productIdCache.ToArray();
         }
         finally
         {
             _cacheLock.Release();
         }
 
-        var list = new List<ProductDetailRecord>();
-
-        await foreach (var record in productIds.ToAsyncEnumerable().SelectParallelAsync(
-            async (productId, _) =>
-            {
-                var dataETag = (await _fileStore.Get(BuildPath(productId))).BeOk().Return();
-                return dataETag.ToObject<ProductDetailRecord>();
-            }, _maxParallelism))
-        {
-            list.Add(record);
-        }
-
-        return list.ToImmutableArray();
+        return await LoadAllImages();
     }
 
     public async Task<Option> Exists(string productId)
@@ -147,6 +133,39 @@ public class ProductStoreActor
         return result;
     }
 
+    public Task Initialize(IFileProvider fileProvider)
+    {
+        lock (_initializationLock)
+        {
+            if (InitializationTask != null) return InitializationTask;
+
+            var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            InitializationTask = tcs.Task;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await CivillyInsane.sdk.TestData.ProductTestData.UpsertAll(this, fileProvider);
+                    await _cacheLock.WaitAsync();
+                    await LoadDirectory();
+                    await LoadAllImages();
+
+                    tcs.SetResult();
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
+
+            return InitializationTask;
+        }
+    }
+
+    public string BuildPath(string productId) => $"{productId.NotEmpty()}/{BuildSafePath.Build(productId, "product", "json")}";
+    public string BuildPath(string productId, string file) => $"{productId.NotEmpty()}/{file.NotEmpty()}";
+
     private async Task<Option<string>> UpsertProduct(string productId, DataETag data)
     {
         await _cacheLock.WaitAsync();
@@ -162,6 +181,31 @@ public class ProductStoreActor
         }
     }
 
-    public string BuildPath(string productId) => $"{productId.NotEmpty()}/{BuildSafePath.Build(productId, "product", "json")}";
-    public string BuildPath(string productId, string file) => $"{productId.NotEmpty()}/{file.NotEmpty()}";
+    private async Task LoadDirectory()
+    {
+        var entries = await _fileStore.Search("**/*.product.json");
+        var ids = entries.Select(x => x.Path[..x.Path.LastIndexOf('/')]).ToArray();
+
+        _productIdCache.Clear();
+        foreach (string productId in ids) _productIdCache.Add(productId);
+        _cacheInitialized = true;
+    }
+
+
+    private async Task<IReadOnlyList<ProductDetailRecord>> LoadAllImages()
+    {
+        var list = new List<ProductDetailRecord>();
+
+        await foreach (var record in _productIdCache.ToAsyncEnumerable().SelectParallelAsync(
+            async (productId, _) =>
+            {
+                var dataETag = (await _fileStore.Get(BuildPath(productId))).BeOk().Return();
+                return dataETag.ToObject<ProductDetailRecord>();
+            }, _maxParallelism))
+        {
+            list.Add(record);
+        }
+
+        return list.ToImmutableArray();
+    }
 }

@@ -11,9 +11,6 @@ namespace CivillyInsane.sdk.Application;
 public static class StoreConfig
 {
     public const string ProductStoreName = "productStore";
-    public const string AccountStoreName = "accountStore";
-    public const string UserStoreName = "userStore";
-    public const string OrdersStoreName = "ordersStore";
 }
 
 
