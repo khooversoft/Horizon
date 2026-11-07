@@ -1,0 +1,37 @@
+CREATE TABLE [AppDbo].[Cart]
+(
+    [RowId] bigint IDENTITY(1,1) NOT NULL,
+    [CartId] nvarchar(50) NOT NULL,
+    [SiteRowId] bigint NOT NULL,
+    [CustomerRowId] bigint NULL,
+    [GuestTokenHash] varbinary(32) NULL,
+    [CurrencyCode] char(3) NOT NULL,
+    [StatusCode] varchar(20) NOT NULL CONSTRAINT [DF_Cart_StatusCode] DEFAULT ('active'),
+    [ExpiresUtc] datetime2(3) NOT NULL,
+    [LastActivityUtc] datetime2(3) NOT NULL CONSTRAINT [DF_Cart_LastActivityUtc] DEFAULT (SYSUTCDATETIME()),
+    [ConvertedOrderRowId] bigint NULL,
+    [MergedIntoCartRowId] bigint NULL,
+    [CreatedUtc] datetime2(3) NOT NULL CONSTRAINT [DF_Cart_CreatedUtc] DEFAULT (SYSUTCDATETIME()),
+    [ModifiedUtc] datetime2(3) NOT NULL CONSTRAINT [DF_Cart_ModifiedUtc] DEFAULT (SYSUTCDATETIME()),
+    [RowVersion] rowversion NOT NULL,
+    [JsonData] varchar(max) NULL,
+    CONSTRAINT [PK_Cart] PRIMARY KEY CLUSTERED ([RowId]),
+    CONSTRAINT [UQ_Cart_CartId] UNIQUE NONCLUSTERED ([CartId]),
+    CONSTRAINT [CK_Cart_BusinessId] CHECK (LEN(TRIM([CartId])) > 0),
+    CONSTRAINT [CK_Cart_JsonData] CHECK ([JsonData] IS NULL OR ISJSON([JsonData]) = 1),
+    CONSTRAINT [FK_Cart_SiteRowId] FOREIGN KEY ([SiteRowId]) REFERENCES [AppDbo].[Site] ([RowId]),
+    CONSTRAINT [FK_Cart_CustomerRowId] FOREIGN KEY ([CustomerRowId]) REFERENCES [AppDbo].[Customer] ([RowId]),
+    CONSTRAINT [FK_Cart_CurrencyCode] FOREIGN KEY ([CurrencyCode]) REFERENCES [AppDbo].[Currency] ([CurrencyCode]),
+    CONSTRAINT [FK_Cart_ConvertedOrderRowId] FOREIGN KEY ([ConvertedOrderRowId]) REFERENCES [AppDbo].[SalesOrder] ([RowId]),
+    CONSTRAINT [FK_Cart_MergedIntoCartRowId] FOREIGN KEY ([MergedIntoCartRowId]) REFERENCES [AppDbo].[Cart] ([RowId]),
+    CONSTRAINT [CK_Cart_Rule1] CHECK (StatusCode IN ('active','converted','abandoned','expired','merged')),
+    CONSTRAINT [CK_Cart_Rule2] CHECK (CustomerRowId IS NOT NULL OR GuestTokenHash IS NOT NULL)
+);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [IX_Cart_1] ON [AppDbo].[Cart] (SiteRowId,CustomerRowId) WHERE StatusCode = 'active' AND CustomerRowId IS NOT NULL;
+GO
+CREATE NONCLUSTERED INDEX [IX_Cart_2] ON [AppDbo].[Cart] (GuestTokenHash,StatusCode);
+GO
+CREATE NONCLUSTERED INDEX [IX_Cart_3] ON [AppDbo].[Cart] (StatusCode,ExpiresUtc);
+GO

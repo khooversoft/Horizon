@@ -1,4 +1,0 @@
-CREATE NONCLUSTERED INDEX [IX_Pet_1] ON [AppDbo].[Pet] (CustomerRowId);
-GO
-CREATE UNIQUE NONCLUSTERED INDEX [IX_Pet_2] ON [AppDbo].[Pet] (RowId,CustomerRowId);
-GO

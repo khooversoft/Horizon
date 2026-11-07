@@ -1,0 +1,40 @@
+CREATE TABLE [AppDbo].[CustomerAddress]
+(
+    [RowId] bigint IDENTITY(1,1) NOT NULL,
+    [CustomerAddressId] nvarchar(50) NOT NULL,
+    [CustomerRowId] bigint NOT NULL,
+    [Label] nvarchar(100) NULL,
+    [RecipientName] nvarchar(200) NOT NULL,
+    [CompanyName] nvarchar(200) NULL,
+    [AddressLine1] nvarchar(200) NOT NULL,
+    [AddressLine2] nvarchar(200) NULL,
+    [City] nvarchar(100) NOT NULL,
+    [RegionCode] nvarchar(100) NULL,
+    [PostalCode] nvarchar(30) NOT NULL,
+    [CountryCode] char(2) NOT NULL,
+    [Phone] nvarchar(50) NULL,
+    [IsDefaultShipping] bit NOT NULL CONSTRAINT [DF_CustomerAddress_IsDefaultShipping] DEFAULT (0),
+    [IsDefaultBilling] bit NOT NULL CONSTRAINT [DF_CustomerAddress_IsDefaultBilling] DEFAULT (0),
+    [StatusCode] varchar(20) NOT NULL CONSTRAINT [DF_CustomerAddress_StatusCode] DEFAULT ('active'),
+    [CreatedUtc] datetime2(3) NOT NULL CONSTRAINT [DF_CustomerAddress_CreatedUtc] DEFAULT (SYSUTCDATETIME()),
+    [ModifiedUtc] datetime2(3) NOT NULL CONSTRAINT [DF_CustomerAddress_ModifiedUtc] DEFAULT (SYSUTCDATETIME()),
+    [RowVersion] rowversion NOT NULL,
+    [JsonData] varchar(max) NULL,
+    CONSTRAINT [PK_CustomerAddress] PRIMARY KEY CLUSTERED ([RowId]),
+    CONSTRAINT [UQ_CustomerAddress_CustomerAddressId] UNIQUE NONCLUSTERED ([CustomerAddressId]),
+    CONSTRAINT [CK_CustomerAddress_BusinessId] CHECK (LEN(TRIM([CustomerAddressId])) > 0),
+    CONSTRAINT [CK_CustomerAddress_JsonData] CHECK ([JsonData] IS NULL OR ISJSON([JsonData]) = 1),
+    CONSTRAINT [FK_CustomerAddress_CustomerRowId] FOREIGN KEY ([CustomerRowId]) REFERENCES [AppDbo].[Customer] ([RowId]),
+    CONSTRAINT [FK_CustomerAddress_CountryCode] FOREIGN KEY ([CountryCode]) REFERENCES [AppDbo].[Country] ([CountryCode]),
+    CONSTRAINT [CK_CustomerAddress_Rule1] CHECK (StatusCode IN ('active','archived'))
+);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_CustomerAddress_1] ON [AppDbo].[CustomerAddress] (CustomerRowId,StatusCode);
+GO
+CREATE UNIQUE NONCLUSTERED INDEX [IX_CustomerAddress_2] ON [AppDbo].[CustomerAddress] (CustomerRowId) WHERE IsDefaultShipping = 1 AND StatusCode = 'active';
+GO
+CREATE UNIQUE NONCLUSTERED INDEX [IX_CustomerAddress_3] ON [AppDbo].[CustomerAddress] (CustomerRowId) WHERE IsDefaultBilling = 1 AND StatusCode = 'active';
+GO
+CREATE UNIQUE NONCLUSTERED INDEX [IX_CustomerAddress_4] ON [AppDbo].[CustomerAddress] (RowId,CustomerRowId);
+GO

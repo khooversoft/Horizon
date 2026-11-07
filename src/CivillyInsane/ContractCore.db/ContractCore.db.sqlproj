@@ -57,63 +57,18 @@
   <ItemGroup>
     <Folder Include="Properties" />
     <Folder Include="Audit\" />
-    <Folder Include="Audit\Indexes\" />
-    <Folder Include="Audit\StoredProcedures\" />
-    <Folder Include="Audit\Tables\" />
-    <Folder Include="Audit\Views\" />
     <Folder Include="Customer\" />
-    <Folder Include="Customer\Indexes\" />
-    <Folder Include="Customer\StoredProcedures\" />
-    <Folder Include="Customer\Tables\" />
-    <Folder Include="Customer\Views\" />
     <Folder Include="Fulfillment\" />
-    <Folder Include="Fulfillment\Indexes\" />
-    <Folder Include="Fulfillment\StoredProcedures\" />
-    <Folder Include="Fulfillment\Tables\" />
-    <Folder Include="Fulfillment\Views\" />
     <Folder Include="Integration\" />
-    <Folder Include="Integration\Indexes\" />
-    <Folder Include="Integration\StoredProcedures\" />
-    <Folder Include="Integration\Tables\" />
-    <Folder Include="Integration\Views\" />
     <Folder Include="Payment\" />
-    <Folder Include="Payment\Indexes\" />
-    <Folder Include="Payment\StoredProcedures\" />
-    <Folder Include="Payment\Tables\" />
-    <Folder Include="Payment\Views\" />
     <Folder Include="Platform\" />
-    <Folder Include="Platform\Indexes\" />
-    <Folder Include="Platform\StoredProcedures\" />
-    <Folder Include="Platform\Tables\" />
-    <Folder Include="Platform\Views\" />
     <Folder Include="References\" />
-    <Folder Include="References\Indexes\" />
-    <Folder Include="References\StoredProcedures\" />
-    <Folder Include="References\Tables\" />
-    <Folder Include="References\Views\" />
     <Folder Include="Sales\" />
-    <Folder Include="Sales\Indexes\" />
-    <Folder Include="Sales\StoredProcedures\" />
-    <Folder Include="Sales\Tables\" />
-    <Folder Include="Sales\Views\" />
     <Folder Include="Security\" />
-    <Folder Include="Security\Functions\" />
-    <Folder Include="Security\Indexes\" />
-    <Folder Include="Security\StoredProcedures\" />
-    <Folder Include="Security\Tables\" />
-    <Folder Include="Security\Views\" />
     <Folder Include="Subscription\" />
-    <Folder Include="Subscription\Indexes\" />
-    <Folder Include="Subscription\StoredProcedures\" />
-    <Folder Include="Subscription\Tables\" />
-    <Folder Include="Subscription\Views\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Catalog" />
-    <Folder Include="Catalog\Tables" />
-    <Folder Include="Catalog\Indexes" />
-    <Folder Include="Catalog\Views" />
-    <Folder Include="Catalog\StoredProcedures" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Audit\**\*.sql" />
@@ -127,5 +82,8 @@
     <Build Include="Sales\**\*.sql" />
     <Build Include="Security\**\*.sql" />
     <Build Include="Subscription\**\*.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Format-SqlColumns.ps1" />
   </ItemGroup>
 </Project>
