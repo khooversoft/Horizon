@@ -1,0 +1,1741 @@
+TECHNICAL DESIGN SPECIFICATION
+Commerce PlatformSQL Database Design
+High-volume product sales and subscription commerce
+Custom apparel, premium pet food, recurring products, and recurring services
+Target: SQL Server / Azure SQL DatabaseImplementation: Visual Studio SSDT database projectConsumers: Headless APIs, multiple storefronts, and an administration site
+Prepared for AI-assisted project generation
+Version 1.0  |  19 October 2026
+
+Document control
+Item
+Value
+Purpose
+Detailed, implementation-oriented specification from which an AI coding agent can create the SQL database project and C# stored-procedure client library.
+Primary scenarios
+High-volume direct web sales; account-based subscription sales for products or services.
+Example storefronts
+Custom T-shirt commerce and BadPet.co premium cat and dog food subscriptions.
+Database boundary
+SQL Server owns accounts, catalog, carts, sales orders, subscriptions, payment records, fulfillment state, integrations, and audit history.
+Media boundary
+Azure Data Lake Storage stores images and video; SQL stores metadata, URI, ordering, and associations.
+Source table list
+MPV tables.xlsx supplied with the request; incorporated and normalized in this design.
+Status
+Implementation baseline. Extensions are intentionally deferred until business demand requires them.
+
+Executive summary
+This design provides a deliberately small relational core for two commerce models: ordinary high-volume storefront orders and account-only recurring subscriptions. Both models converge on the same order, payment, fulfillment, and audit structures. A subscription is a schedule and reusable order template; each successful renewal creates an ordinary sales order.
+Key correction  Inventory is outside the scope because contracted fulfillment companies supply and ship the products. Therefore subscription renewal does not reserve inventory. It validates that the SKU and fulfillment route remain active, creates an order, initiates payment, and advances the next processing date only after the configured success point.
+
+All base tables and private implementation objects reside in AppDbo. Runtime consumers receive SELECT and EXECUTE permissions only on the App schema. App views expose read contracts; App stored procedures expose write and command contracts. API code never receives direct table permissions.
+The database supports multiple storefronts through Site and SiteProduct records. A single customer account can purchase across sites, while catalog visibility, branding, default currency, fulfillment routing, and customer-facing order numbers remain site-aware.
+1. Goals, scope, and guiding decisions
+1.1 Goals
+Provide the minimum relational model needed to launch product sales and subscriptions without creating a short-lived prototype.
+Support headless APIs consumed by multiple storefronts and one administration site.
+Keep the catalog generic enough for apparel, pet food, physical merchandise, and recurring services.
+Make every financial and renewal operation retry-safe and auditable.
+Use explicit stored procedures as the domain command interface and views as stable read contracts.
+Generate clean DACPAC artifacts from an SQL project and support automated deployment.
+Provide sufficient object definitions, invariants, workflows, and naming rules for AI-assisted implementation.
+1.2 Explicit non-goals for the initial release
+Warehouse inventory, stock reservations, receiving, purchasing, and cost accounting.
+General-purpose promotion-rule engine; only simple order or subscription discounts are modeled.
+Marketplace sellers, split settlements, commissions, or vendor payouts.
+Full ERP, CRM, tax engine, email campaign platform, or content-management system.
+Storing sensitive payment card data, card verification values, or payment processor secrets.
+Hard deletion of completed orders, payment history, or subscription events.
+1.3 Core decisions
+Decision
+Design consequence
+One order system
+Guest purchases, account purchases, and subscription renewals all create AppDbo.SalesOrder and AppDbo.SalesOrderItem rows.
+Product and variant separation
+Product is customer-facing content; ProductVariant is the purchasable SKU with price, weight, sale state, and fulfillment code.
+No inventory
+Availability means sellable and fulfillable, not quantity on hand.
+Historical snapshots
+Order items and order addresses retain the values used at purchase time.
+Email-centered customer key
+Normalized email is the business CustomerId, with Entra issuer and subject retained as immutable identity linkage.
+Schema security boundary
+AppDbo is private. App is the only runtime-accessible schema.
+Append-oriented finance
+PaymentTransaction records every authorization, capture, failure, void, refund, and dispute.
+Idempotent integrations
+Provider event IDs and business idempotency keys are protected by unique constraints.
+Minimal extensibility
+Every table includes optional JsonData for uncommon metadata, but core searchable and constrained data remains relational.
+
+2. Architecture and trust boundaries
+2.1 Logical architecture
+Storefront A / Storefront B / Admin UI              |        Headless API services              |    C# database client assembly              |       App views + procedures              |      AppDbo tables + internals       /                    \Azure Data Lake media    Payment / fulfillment providers
+
+The C# database client library is the only code layer that understands SQL parameter names, result-set shapes, and stored-procedure names. API services depend on typed command and result contracts rather than referencing ADO.NET details throughout the application.
+2.2 Transaction ownership
+Each business-changing App stored procedure owns its SQL transaction.
+The API must not open a long transaction spanning network calls to payment or fulfillment providers.
+Provider calls use an outbox/background-worker sequence or an explicit two-step state machine.
+Webhook ingestion records the original message before processing and deduplicates by provider plus external event ID.
+Every procedure that changes money, order state, or subscription timing writes an audit event in the same database transaction.
+2.3 Multi-site model
+A Site represents a customer-facing website or sales channel. It does not create a separate database or duplicate customer table. Site-aware catalog and order records isolate presentation and business defaults while preserving a shared operational core.
+Object
+Site behavior
+Site
+Defines SiteId, name, host, default currency, fulfillment provider, status, and optional settings.
+SiteProduct
+Controls whether a shared product is visible on a site and permits site-specific display sequence or title override.
+Cart
+Belongs to exactly one site.
+SalesOrder
+Belongs to exactly one site and snapshots site-facing information as needed.
+Subscription
+Belongs to one site because renewal pricing, currency, and fulfillment routing are site-specific.
+Customer
+Shared across sites by normalized email.
+Employee role
+Scoped globally or to a SiteId, depending on EmployeeRole.SiteId.
+
+3. Naming, keys, and data conventions
+3.1 Object naming
+Object type
+Convention
+Example
+Private table
+Singular PascalCase in AppDbo
+AppDbo.ProductVariant
+Public stored procedure
+Domain_Action in App
+App.Cart_AddItem
+Public view
+Domain_ReadPurpose in App
+App.Catalog_ProductDetail
+Primary key
+PK_<Table> on RowId
+PK_ProductVariant
+Business ID unique key
+UQ_<Table>_<Id>
+UQ_ProductVariant_ProductVariantId
+Foreign key
+FK_<Child>_<Parent>
+FK_OrderItem_SalesOrder
+Index
+IX_<Table>_<Columns>
+IX_SalesOrder_CustomerId_PlacedUtc
+Check constraint
+CK_<Table>_<Rule>
+CK_CartItem_Quantity
+
+3.2 Required common columns
+Every table uses an internal identity key and a domain-friendly external key. Most external IDs are short, stable, human-readable values. The exceptions are email-based CustomerId and provider identifiers, which require longer columns.
+Column
+Type
+Rule
+RowId
+bigint IDENTITY(1,1)
+Internal primary key. Never exposed as the public API identifier.
+<Entity>Id
+nvarchar(50)
+Required business identifier for most entities; unique within its stated scope.
+JsonData
+varchar(max) NULL
+Optional valid JSON for uncommon metadata. Add CHECK (JsonData IS NULL OR ISJSON(JsonData)=1).
+CreatedUtc
+datetime2(3)
+Required where the row has a lifecycle.
+ModifiedUtc
+datetime2(3)
+Required on mutable entities.
+RowVersion
+rowversion
+Required on mutable command targets for optimistic concurrency.
+
+Email key exception  CustomerId is the normalized email address and must be nvarchar(320), not nvarchar(50). Truncating an email to 50 characters would create avoidable account collisions and sign-in failures. The design preserves the requested email-centered account model while also storing Entra issuer and subject so identity linkage survives provider changes and can be investigated safely.
+
+3.3 Identifier rules
+IDs are lowercase ASCII slugs where human readability is useful: custom-tee-001, dog-food-adult-chicken-12lb, badpet-main.
+Provider-controlled identifiers use provider lengths rather than nvarchar(50), usually nvarchar(200) or nvarchar(255).
+CustomerId is normalized by the API using trim plus invariant lowercase before calling SQL. SQL repeats the normalized-value check.
+Email changes require a dedicated account procedure; they are never implemented as an ad hoc update.
+RowId is used for foreign keys inside the database for compact joins. Public procedures accept business IDs and resolve them to RowId under transaction.
+3.4 Money, time, and JSON
+Money uses decimal(19,4), never SQL money.
+Currency uses char(3) ISO-style codes and references Currency.
+All database timestamps are UTC datetime2(3).
+JsonData is never the sole location for price, quantity, status, email, SKU, next processing date, or provider transaction IDs.
+JSON fields are validated with ISJSON. Frequently queried JSON properties must be promoted to relational columns.
+4. Security and identity design
+4.1 Entra External ID
+Microsoft Entra External ID authenticates customers and can map OIDC claims including subject and email. The database treats normalized email as CustomerId per the requested business rule, while CustomerIdentity stores Issuer and Subject as the durable authentication linkage. This prevents the application from relying only on a mutable profile attribute.
+4.2 Customer authorization
+Customers do not have application roles. A customer can act only on resources linked to the authenticated CustomerId or to a validated guest cart token. Stored procedures do not accept an arbitrary customer email as authorization proof; the API derives the actor from the validated access token and sets trusted SQL session context.
+4.3 Employee authorization
+Employees are assigned only one or more of the following roles: owner, contributor, or read-only. Customer accounts are never inserted into employee-role tables.
+Role
+Intended capability
+owner
+Full administration, employee access management, catalog publishing, order corrections, subscription administration, and refund initiation.
+contributor
+Catalog management, customer service, order and subscription operations; no employee-role administration.
+read-only
+Administrative read views only; no state-changing procedures.
+
+4.4 Database roles and grants
+CREATE ROLE [app_api_runtime];CREATE ROLE [app_deployer];GRANT SELECT, EXECUTE ON SCHEMA::[App] TO [app_api_runtime];DENY SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[AppDbo] TO [app_api_runtime];
+
+In production, role grants should be narrowed further if separate API identities exist for storefront, admin, payment worker, and subscription worker. The schema rule is the minimum security boundary, not a reason to give every runtime service every procedure.
+4.5 Session context
+EXEC sys.sp_set_session_context @key=N'ActorType', @value=N'Customer', @read_only=1;EXEC sys.sp_set_session_context @key=N'ActorId', @value=@CustomerId, @read_only=1;EXEC sys.sp_set_session_context @key=N'CorrelationId', @value=@CorrelationId, @read_only=1;
+
+Audit-writing procedures read ActorType, ActorId, CorrelationId, ApplicationName, and RequestId from trusted session context. The API must not copy unvalidated browser claims directly into this context.
+5. Domain model overview
+Domain
+Table
+Purpose
+Platform
+AppDbo.Site
+Storefront/channel configuration.
+Platform
+AppDbo.SiteProduct
+Product visibility and override per storefront.
+Catalog
+AppDbo.Product
+Customer-facing product.
+Catalog
+AppDbo.ProductVariant
+Purchasable SKU.
+Catalog
+AppDbo.ProductOption
+Option type: size, color, flavor, life stage, package size.
+Catalog
+AppDbo.ProductOptionValue
+Allowed option values.
+Catalog
+AppDbo.ProductVariantOptionValue
+Variant-to-option-value association.
+Catalog
+AppDbo.ProductMedia
+Image/video metadata and Azure Data Lake URI.
+Catalog
+AppDbo.Category
+Hierarchical catalog category.
+Catalog
+AppDbo.ProductCategory
+Product-to-category association.
+Customer
+AppDbo.Customer
+Email-centered customer account/profile.
+Customer
+AppDbo.CustomerIdentity
+Entra issuer/subject linkage.
+Customer
+AppDbo.CustomerAddress
+Reusable customer address.
+Customer
+AppDbo.Pet
+Optional pet profile.
+Security
+AppDbo.EmployeeRole
+Employee role assignment; never customers.
+Sales
+AppDbo.Cart
+Guest or customer cart.
+Sales
+AppDbo.CartItem
+Variant and quantity.
+Sales
+AppDbo.SalesOrder
+Order header.
+Sales
+AppDbo.SalesOrderItem
+Immutable purchased-item snapshot.
+Sales
+AppDbo.SalesOrderAddress
+Immutable order address snapshot.
+Sales
+AppDbo.SalesOrderStatusHistory
+Append-only order status timeline.
+Sales
+AppDbo.SalesOrderDiscount
+Applied discount snapshot.
+Subscription
+AppDbo.Subscription
+Recurring schedule and reusable order template.
+Subscription
+AppDbo.SubscriptionItem
+Recurring variant and quantity.
+Subscription
+AppDbo.SubscriptionPet
+Associates pet profiles.
+Subscription
+AppDbo.SubscriptionEvent
+Append-only subscription history.
+Payment
+AppDbo.PaymentMethod
+Reusable provider token/reference.
+Payment
+AppDbo.Payment
+Current order payment summary.
+Payment
+AppDbo.PaymentTransaction
+Append-oriented financial event history.
+Fulfillment
+AppDbo.Fulfillment
+Contracted-provider fulfillment request/status.
+Fulfillment
+AppDbo.FulfillmentItem
+Order-item quantities submitted to provider.
+Audit
+AppDbo.BusinessEvent
+Append-only actor/reason/business event.
+Reference
+AppDbo.Country
+Supported country codes.
+Reference
+AppDbo.Currency
+Currency metadata.
+Reference
+AppDbo.UnitOfMeasure
+Weight/item units.
+Integration
+AppDbo.InboxMessage
+Idempotent provider webhook inbox.
+Integration
+AppDbo.OutboxMessage
+Reliable outbound event queue.
+
+6. Detailed table specifications
+The following definitions are implementation contracts. Unless explicitly marked append-only, mutable tables include ModifiedUtc and RowVersion. All tables include RowId, a domain ID, and nullable JsonData. Association tables use a human-readable deterministic ID or a composite uniqueness rule in addition to RowId.
+AppDbo.Site
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+SiteId
+nvarchar(50)
+UQ, required
+Examples: badpet, custom-tee.
+Name
+nvarchar(150)
+required
+Administrative name.
+PrimaryHost
+nvarchar(255)
+required
+Canonical storefront host.
+DefaultCurrencyCode
+char(3)
+FK Currency
+Default checkout currency.
+DefaultFulfillmentProviderCode
+nvarchar(50)
+nullable
+Provider routing default.
+StatusCode
+varchar(20)
+required
+draft, active, suspended, closed.
+CreatedUtc
+datetime2(3)
+required
+Creation time.
+ModifiedUtc
+datetime2(3)
+required
+Last update.
+RowVersion
+rowversion
+required
+Optimistic concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Site-specific settings not promoted to columns.
+
+AppDbo.Product
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+ProductId
+nvarchar(50)
+UQ, required
+Stable product slug/code.
+Name
+nvarchar(250)
+required
+Customer-facing name.
+ShortDescription
+nvarchar(500)
+nullable
+Listing text.
+Description
+nvarchar(max)
+nullable
+Long product copy.
+ProductTypeCode
+varchar(30)
+required
+physical or service.
+StatusCode
+varchar(20)
+required
+draft, active, inactive, retired.
+SubscriptionEligible
+bit
+required
+Can be added to a subscription.
+DefaultFulfillmentProviderCode
+nvarchar(50)
+nullable
+Default contracted provider.
+CreatedUtc
+datetime2(3)
+required
+Creation.
+ModifiedUtc
+datetime2(3)
+required
+Modification.
+RowVersion
+rowversion
+required
+Concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Uncommon display attributes.
+
+AppDbo.ProductVariant
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal SKU key.
+ProductVariantId
+nvarchar(50)
+UQ, required
+Stable purchasable ID.
+ProductRowId
+bigint
+FK Product
+Owning product.
+Sku
+nvarchar(75)
+UQ, required
+Fulfillment-facing SKU.
+Name
+nvarchar(200)
+required
+Variant display label.
+UnitPrice
+decimal(19,4)
+required >= 0
+Current unit price.
+CurrencyCode
+char(3)
+FK Currency
+Price currency.
+WeightValue
+decimal(12,4)
+nullable
+Shipping weight.
+WeightUnitCode
+nvarchar(20)
+FK UnitOfMeasure
+Weight unit.
+FulfillmentProviderCode
+nvarchar(50)
+nullable
+Override route.
+ProviderSku
+nvarchar(100)
+nullable
+Contracted provider SKU.
+StatusCode
+varchar(20)
+required
+active, inactive, retired.
+SubscriptionEligible
+bit
+required
+Variant recurrence flag.
+CreatedUtc
+datetime2(3)
+required
+Creation.
+ModifiedUtc
+datetime2(3)
+required
+Modification.
+RowVersion
+rowversion
+required
+Concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Non-core provider/display metadata.
+
+AppDbo.Customer
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+CustomerId
+nvarchar(320)
+UQ, required
+Normalized email; explicit length exception.
+EmailDisplay
+nvarchar(320)
+required
+Customer-entered casing/display.
+FirstName
+nvarchar(100)
+nullable
+Optional profile.
+LastName
+nvarchar(100)
+nullable
+Optional profile.
+Phone
+nvarchar(50)
+nullable
+Required before subscription activation.
+StatusCode
+varchar(20)
+required
+active, blocked, closed.
+MarketingOptIn
+bit
+required
+Consent flag only.
+CreatedUtc
+datetime2(3)
+required
+Creation.
+ModifiedUtc
+datetime2(3)
+required
+Modification.
+RowVersion
+rowversion
+required
+Concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Optional profile metadata.
+
+AppDbo.CustomerIdentity
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+CustomerIdentityId
+nvarchar(50)
+UQ, required
+Application identity-link ID.
+CustomerRowId
+bigint
+FK Customer
+Customer account.
+Issuer
+nvarchar(500)
+required
+OIDC issuer.
+Subject
+nvarchar(200)
+required
+OIDC subject.
+IdentityProviderCode
+nvarchar(50)
+nullable
+email, Microsoft, Google, etc.
+CreatedUtc
+datetime2(3)
+required
+Linked time.
+LastSeenUtc
+datetime2(3)
+nullable
+Most recent successful use.
+JsonData
+varchar(max)
+nullable JSON
+Non-authoritative claims metadata.
+
+AppDbo.CustomerAddress
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+CustomerAddressId
+nvarchar(50)
+UQ, required
+Address ID.
+CustomerRowId
+bigint
+FK Customer
+Owner.
+Label
+nvarchar(100)
+nullable
+Home, office, etc.
+RecipientName
+nvarchar(200)
+required
+Delivery recipient.
+CompanyName
+nvarchar(200)
+nullable
+Company.
+AddressLine1
+nvarchar(200)
+required
+Address.
+AddressLine2
+nvarchar(200)
+nullable
+Additional address.
+City
+nvarchar(100)
+required
+City/locality.
+RegionCode
+nvarchar(100)
+nullable
+State/province/region.
+PostalCode
+nvarchar(30)
+required
+Postal code.
+CountryCode
+char(2)
+FK Country
+Country.
+Phone
+nvarchar(50)
+nullable
+Delivery contact.
+IsDefaultShipping
+bit
+required
+Default shipping.
+IsDefaultBilling
+bit
+required
+Default billing.
+StatusCode
+varchar(20)
+required
+active or archived.
+ModifiedUtc
+datetime2(3)
+required
+Last update.
+RowVersion
+rowversion
+required
+Concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Validation metadata.
+
+AppDbo.Cart
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+CartId
+nvarchar(50)
+UQ, required
+Opaque public ID.
+SiteRowId
+bigint
+FK Site
+Owning storefront.
+CustomerRowId
+bigint
+nullable FK Customer
+Null for guest.
+GuestTokenHash
+varbinary(32)
+nullable
+SHA-256 token hash; never raw token.
+CurrencyCode
+char(3)
+FK Currency
+Cart currency.
+StatusCode
+varchar(20)
+required
+active, converted, abandoned, expired, merged.
+ExpiresUtc
+datetime2(3)
+required
+Guest/account inactivity expiry.
+LastActivityUtc
+datetime2(3)
+required
+Cleanup and analytics.
+ConvertedOrderRowId
+bigint
+nullable FK SalesOrder
+Created order.
+RowVersion
+rowversion
+required
+Concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Non-core session metadata.
+
+AppDbo.CartItem
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+CartItemId
+nvarchar(50)
+UQ, required
+Public line ID.
+CartRowId
+bigint
+FK Cart
+Owning cart.
+ProductVariantRowId
+bigint
+FK ProductVariant
+Selected SKU.
+Quantity
+int
+required > 0
+Requested quantity.
+UnitPriceEstimate
+decimal(19,4)
+required >= 0
+Display estimate; checkout reprices.
+AddedUtc
+datetime2(3)
+required
+Added time.
+ModifiedUtc
+datetime2(3)
+required
+Changed time.
+RowVersion
+rowversion
+required
+Concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Optional line metadata.
+
+AppDbo.SalesOrder
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+SalesOrderId
+nvarchar(50)
+UQ, required
+Opaque public ID.
+OrderNumber
+nvarchar(50)
+UQ, required
+Customer-facing number.
+SiteRowId
+bigint
+FK Site
+Ordering site.
+CustomerRowId
+bigint
+nullable FK Customer
+Null for guest order.
+SourceCartRowId
+bigint
+nullable FK Cart
+Origin cart.
+SourceSubscriptionRowId
+bigint
+nullable FK Subscription
+Renewal source.
+CustomerEmail
+nvarchar(320)
+required
+Historical contact snapshot.
+CurrencyCode
+char(3)
+required
+Order currency.
+OrderStatusCode
+varchar(25)
+required
+pending-payment, paid, submitted, shipped, complete, cancelled.
+PaymentStatusCode
+varchar(25)
+required
+pending, authorized, paid, partially-refunded, refunded, failed.
+FulfillmentStatusCode
+varchar(25)
+required
+not-submitted, submitted, processing, shipped, delivered, cancelled.
+ItemSubtotal
+decimal(19,4)
+required
+Item total before discounts.
+DiscountTotal
+decimal(19,4)
+required
+Positive discount amount.
+ShippingTotal
+decimal(19,4)
+required
+Shipping charge.
+TaxTotal
+decimal(19,4)
+required
+Tax charge.
+GrandTotal
+decimal(19,4)
+required
+Final total.
+PlacedUtc
+datetime2(3)
+required
+Placement time.
+ModifiedUtc
+datetime2(3)
+required
+Last state change.
+RowVersion
+rowversion
+required
+Concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Non-core snapshot metadata.
+
+AppDbo.SalesOrderItem
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+SalesOrderItemId
+nvarchar(50)
+UQ, required
+Public line ID.
+SalesOrderRowId
+bigint
+FK SalesOrder
+Order.
+ProductIdSnapshot
+nvarchar(50)
+required
+Historical ProductId.
+ProductVariantIdSnapshot
+nvarchar(50)
+required
+Historical variant ID.
+SkuSnapshot
+nvarchar(75)
+required
+Historical SKU.
+ProductNameSnapshot
+nvarchar(250)
+required
+Historical product name.
+VariantNameSnapshot
+nvarchar(200)
+required
+Historical variant/options.
+ProviderSkuSnapshot
+nvarchar(100)
+nullable
+Fulfillment SKU at purchase.
+Quantity
+int
+required > 0
+Purchased quantity.
+UnitListPrice
+decimal(19,4)
+required
+Before discount.
+UnitSalePrice
+decimal(19,4)
+required
+Actual unit sale price.
+DiscountAmount
+decimal(19,4)
+required
+Line discount.
+TaxAmount
+decimal(19,4)
+required
+Line tax.
+LineTotal
+decimal(19,4)
+required
+Final line total.
+JsonData
+varchar(max)
+nullable JSON
+Additional immutable item snapshot.
+
+AppDbo.Subscription
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+SubscriptionId
+nvarchar(50)
+UQ, required
+Public subscription ID.
+SiteRowId
+bigint
+FK Site
+Owning site.
+CustomerRowId
+bigint
+FK Customer
+Account required.
+ShippingAddressRowId
+bigint
+FK CustomerAddress
+Current reusable shipping address.
+PaymentMethodRowId
+bigint
+FK PaymentMethod
+Reusable provider method.
+FrequencyCode
+varchar(30)
+required
+weekly, every-2-weeks, monthly, etc.
+IntervalCount
+smallint
+required > 0
+Supports every N units.
+IntervalUnitCode
+varchar(20)
+required
+day, week, month.
+StatusCode
+varchar(25)
+required
+draft, active, paused, payment-failed, cancelled, completed.
+NextProcessUtc
+datetime2(3)
+nullable
+Next scheduled attempt.
+LastProcessUtc
+datetime2(3)
+nullable
+Most recent attempt.
+FailureCount
+int
+required
+Consecutive renewal failures.
+DiscountPercent
+decimal(9,4)
+required
+Simple subscription discount.
+CreatedUtc
+datetime2(3)
+required
+Creation.
+ModifiedUtc
+datetime2(3)
+required
+Modification.
+RowVersion
+rowversion
+required
+Scheduler concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Optional schedule metadata.
+
+AppDbo.PaymentMethod
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+PaymentMethodId
+nvarchar(50)
+UQ, required
+Public application ID.
+CustomerRowId
+bigint
+FK Customer
+Owner.
+ProviderCode
+nvarchar(50)
+required
+stripe or other processor.
+ProviderCustomerId
+nvarchar(200)
+nullable
+Provider customer reference.
+ProviderPaymentMethodId
+nvarchar(200)
+required
+Reusable token/reference.
+MethodTypeCode
+varchar(30)
+required
+card, bank, wallet.
+DisplayBrand
+nvarchar(50)
+nullable
+Safe display brand.
+DisplayLastFour
+char(4)
+nullable
+Safe final digits.
+ExpirationMonth
+tinyint
+nullable
+Display/expiry management.
+ExpirationYear
+smallint
+nullable
+Display/expiry management.
+IsDefault
+bit
+required
+Default method.
+StatusCode
+varchar(20)
+required
+active, expired, detached.
+CreatedUtc
+datetime2(3)
+required
+Creation.
+ModifiedUtc
+datetime2(3)
+required
+Update.
+RowVersion
+rowversion
+required
+Concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Non-sensitive provider metadata only.
+
+AppDbo.Payment
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+PaymentId
+nvarchar(50)
+UQ, required
+Public payment ID.
+SalesOrderRowId
+bigint
+FK SalesOrder
+Order.
+ProviderCode
+nvarchar(50)
+required
+Processor.
+ProviderPaymentId
+nvarchar(200)
+nullable
+Provider intent/payment reference.
+StatusCode
+varchar(25)
+required
+Current summary only.
+AmountRequested
+decimal(19,4)
+required
+Requested amount.
+AmountAuthorized
+decimal(19,4)
+required
+Authorized total.
+AmountCaptured
+decimal(19,4)
+required
+Captured total.
+AmountRefunded
+decimal(19,4)
+required
+Refunded total.
+CurrencyCode
+char(3)
+required
+Currency.
+CreatedUtc
+datetime2(3)
+required
+Creation.
+ModifiedUtc
+datetime2(3)
+required
+Update.
+RowVersion
+rowversion
+required
+Concurrency.
+JsonData
+varchar(max)
+nullable JSON
+Non-sensitive provider metadata.
+
+AppDbo.PaymentTransaction
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+PaymentTransactionId
+nvarchar(50)
+UQ, required
+Public transaction ID.
+PaymentRowId
+bigint
+FK Payment
+Payment.
+TransactionTypeCode
+varchar(25)
+required
+authorize, capture, failure, void, refund, dispute.
+ProviderTransactionId
+nvarchar(200)
+nullable
+Provider operation ID.
+ProviderEventId
+nvarchar(200)
+nullable
+Webhook event ID.
+Amount
+decimal(19,4)
+required
+Event amount.
+CurrencyCode
+char(3)
+required
+Currency.
+StatusCode
+varchar(20)
+required
+pending, succeeded, failed.
+FailureCode
+nvarchar(100)
+nullable
+Safe failure code.
+FailureMessage
+nvarchar(1000)
+nullable
+Sanitized message.
+OccurredUtc
+datetime2(3)
+required
+Provider/business time.
+CreatedUtc
+datetime2(3)
+required
+Recorded time.
+JsonData
+varchar(max)
+nullable JSON
+Sanitized metadata; append-only.
+
+AppDbo.InboxMessage
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+InboxMessageId
+nvarchar(50)
+UQ, required
+Application message ID.
+ProviderCode
+nvarchar(50)
+required
+Source.
+ExternalMessageId
+nvarchar(200)
+required
+Provider event ID; unique with provider.
+MessageTypeCode
+nvarchar(100)
+required
+Provider event type.
+PayloadJson
+varchar(max)
+required JSON
+Original sanitized/raw payload per security policy.
+StatusCode
+varchar(20)
+required
+received, processing, processed, failed, ignored.
+AttemptCount
+int
+required
+Processing attempts.
+ReceivedUtc
+datetime2(3)
+required
+Received time.
+ProcessedUtc
+datetime2(3)
+nullable
+Completion time.
+LastError
+nvarchar(max)
+nullable
+Sanitized failure.
+JsonData
+varchar(max)
+nullable JSON
+Envelope metadata.
+
+AppDbo.OutboxMessage
+Column
+Type
+Constraint
+Purpose
+RowId
+bigint identity
+PK
+Internal key.
+OutboxMessageId
+nvarchar(50)
+UQ, required
+Public message ID.
+MessageTypeCode
+nvarchar(100)
+required
+Event type.
+AggregateTypeCode
+nvarchar(50)
+required
+Order, subscription, etc.
+AggregateId
+nvarchar(320)
+required
+Business ID; length accommodates customer.
+PayloadJson
+varchar(max)
+required JSON
+Event payload.
+StatusCode
+varchar(20)
+required
+pending, publishing, published, failed.
+AttemptCount
+int
+required
+Attempts.
+CreatedUtc
+datetime2(3)
+required
+Creation.
+PublishedUtc
+datetime2(3)
+nullable
+Published time.
+LastError
+nvarchar(max)
+nullable
+Sanitized failure.
+JsonData
+varchar(max)
+nullable JSON
+Transport metadata.
+
+6.1 Supporting tables not expanded above
+Table
+Minimum fields and invariants
+AppDbo.SiteProduct
+SiteProductId; SiteRowId; ProductRowId; IsVisible; DisplayNameOverride; DisplaySequence; unique SiteRowId + ProductRowId.
+AppDbo.ProductOption
+ProductOptionId; Name; DataTypeCode; DisplaySequence; active status.
+AppDbo.ProductOptionValue
+ProductOptionValueId; ProductOptionRowId; ValueCode; DisplayValue; DisplaySequence; active status.
+AppDbo.ProductVariantOptionValue
+ProductVariantOptionValueId; ProductVariantRowId; ProductOptionValueRowId; unique variant + option; prevents two sizes on one SKU.
+AppDbo.ProductMedia
+ProductMediaId; ProductRowId; optional ProductVariantRowId; MediaTypeCode image/video; StorageUri; ThumbnailUri; AltText; DisplaySequence; IsPrimary; content type; width/height/duration.
+AppDbo.Category
+CategoryId; optional ParentCategoryRowId; Name; Slug; StatusCode; DisplaySequence.
+AppDbo.ProductCategory
+ProductCategoryId; ProductRowId; CategoryRowId; unique pair.
+AppDbo.Pet
+PetId; CustomerRowId; Name; SpeciesCode cat/dog; BirthDate; Breed; Weight; optional dietary notes in JsonData.
+AppDbo.EmployeeRole
+EmployeeRoleId; EmployeeEmail; RoleCode owner/contributor/read-only; optional SiteRowId; created/revoked audit fields; unique active assignment.
+AppDbo.SalesOrderAddress
+SalesOrderAddressId; SalesOrderRowId; AddressTypeCode shipping/billing; complete immutable address snapshot.
+AppDbo.SalesOrderStatusHistory
+SalesOrderStatusHistoryId; SalesOrderRowId; FromStatus; ToStatus; Reason; Actor; CorrelationId; ChangedUtc. Append-only.
+AppDbo.SalesOrderDiscount
+SalesOrderDiscountId; SalesOrderRowId; Code; Description; DiscountTypeCode; Amount. Snapshot only.
+AppDbo.SubscriptionItem
+SubscriptionItemId; SubscriptionRowId; ProductVariantRowId; Quantity; optional price ceiling; active status; unique subscription + variant.
+AppDbo.SubscriptionPet
+SubscriptionPetId; SubscriptionRowId; PetRowId; unique pair.
+AppDbo.SubscriptionEvent
+SubscriptionEventId; SubscriptionRowId; EventTypeCode; related SalesOrderId; reason; actor; correlation; EventDataJson; CreatedUtc. Append-only.
+AppDbo.Fulfillment
+FulfillmentId; SalesOrderRowId; ProviderCode; ProviderOrderId; StatusCode; tracking data; submitted/shipped/delivered timestamps.
+AppDbo.FulfillmentItem
+FulfillmentItemId; FulfillmentRowId; SalesOrderItemRowId; Quantity; unique pair.
+AppDbo.BusinessEvent
+BusinessEventId; AggregateType; AggregateId; EventType; ActorType; ActorId; Reason; CorrelationId; EventDataJson; CreatedUtc. Append-only.
+AppDbo.Country
+CountryId; CountryCode char(2); Name; IsSupported.
+AppDbo.Currency
+CurrencyId; CurrencyCode char(3); Name; DecimalPlaces; IsSupported.
+AppDbo.UnitOfMeasure
+UnitOfMeasureId; UnitCode; Name; DimensionCode; conversion metadata where needed.
+
+7. Constraints and invariants
+Customer.CustomerId equals the canonical normalized email and is unique.
+CustomerIdentity has a unique Issuer + Subject pair and belongs to one customer.
+A subscription requires CustomerRowId, active CustomerAddress, active PaymentMethod, at least one active SubscriptionItem, and complete customer contact data.
+A guest cart has GuestTokenHash and no CustomerRowId. An account cart has CustomerRowId; GuestTokenHash may remain temporarily during merge only.
+Only one active cart per SiteRowId + CustomerRowId is allowed through a filtered unique index.
+Only one CartItem per CartRowId + ProductVariantRowId is allowed.
+Closed, converted, expired, or merged carts cannot be modified.
+SalesOrder totals are nonnegative and GrandTotal equals subtotal minus discounts plus shipping plus tax within the procedure calculation.
+SalesOrderItem is immutable after order placement except through explicit administrative correction procedures that append an audit event.
+PaymentTransaction and SubscriptionEvent are append-only by permission and procedure design.
+ProviderCode + ExternalMessageId is unique in InboxMessage.
+ProviderCode + ProviderEventId is unique in PaymentTransaction where ProviderEventId is not null.
+Subscription renewal uniqueness is enforced using SubscriptionRowId + scheduled processing occurrence or a RenewalKey.
+JsonData and other JSON payload columns pass ISJSON checks whenever non-null.
+No procedure accepts RowId from a public API. Business IDs are resolved internally.
+8. Stored-procedure API
+Procedures under App are the only supported write interface. They return documented result sets and stable application error codes. A procedure should not expose internal RowId values unless the C# assembly uses them only inside one call and never returns them to frontend clients.
+Procedure
+Responsibility
+App.Customer_Resolve
+Create or resolve account from validated issuer, subject, and normalized email; update LastSeenUtc.
+App.Customer_Get
+Return customer account read model.
+App.Customer_Update
+Update optional profile fields with RowVersion.
+App.Customer_ChangeEmail
+Controlled email-key migration with identity and audit validation.
+App.CustomerAddress_Save
+Create/update reusable address.
+App.CustomerAddress_Archive
+Archive, not hard-delete, address.
+App.Pet_Save
+Create/update optional pet profile.
+App.Catalog_ProductSave
+Admin create/update product.
+App.Catalog_VariantSave
+Admin create/update SKU and current price.
+App.Catalog_ProductPublish
+Publish or remove product from a site.
+App.Catalog_MediaSave
+Store Data Lake media metadata.
+App.Cart_CreateGuest
+Create guest cart and persist only token hash.
+App.Cart_GetOrCreate
+Return active customer cart for site.
+App.Cart_AddItem
+Add or increment SKU; validate active site product.
+App.Cart_SetQuantity
+Set quantity or remove at zero by explicit rule.
+App.Cart_RemoveItem
+Remove one line.
+App.Cart_MergeGuest
+Merge guest cart into account cart idempotently.
+App.Cart_Expire
+Worker expires inactive carts in batches.
+App.Order_CreateFromCart
+Reprice, snapshot, create ordinary order, convert cart, audit, and enqueue payment request.
+App.Order_Get
+Return order header, items, addresses, payments, and statuses.
+App.Order_Cancel
+Validate transition and append history/audit.
+App.Order_AdministrativeCorrect
+Owner-only correction with mandatory reason and before/after event.
+App.PaymentMethod_SaveReference
+Save provider token/reference and safe display metadata.
+App.PaymentMethod_Detach
+Deactivate reusable method after provider action.
+App.Payment_Create
+Create order payment summary and payment-request outbox message.
+App.Payment_RecordEvent
+Idempotently record authorize/capture/failure/void/refund/dispute.
+App.Subscription_Create
+Require account/contact/address/payment method; create draft subscription.
+App.Subscription_Activate
+Validate all requirements and schedule first run.
+App.Subscription_UpdateItems
+Replace desired recurring lines with concurrency guard.
+App.Subscription_Pause
+Pause and append event.
+App.Subscription_Resume
+Resume and recalculate next processing date.
+App.Subscription_Cancel
+Cancel; never delete.
+App.Subscription_ClaimDueBatch
+Worker safely claims due subscriptions.
+App.Subscription_CreateRenewalOrder
+Reprice and create one ordinary order idempotently.
+App.Subscription_RecordRenewalResult
+Advance date only at configured success point; record failures and retry schedule.
+App.Integration_InboxAccept
+Insert external event once per provider/event ID.
+App.Integration_InboxClaimBatch
+Claim messages for worker processing.
+App.Integration_InboxComplete
+Mark complete/failed with audit data.
+App.Integration_OutboxClaimBatch
+Claim messages for publication.
+App.Integration_OutboxComplete
+Mark publication result.
+App.Fulfillment_CreateRequest
+Create contracted-provider request from paid order.
+App.Fulfillment_RecordEvent
+Update fulfillment idempotently from webhook.
+App.Admin_EmployeeRoleGrant
+Owner-only role assignment.
+App.Admin_EmployeeRoleRevoke
+Owner-only revocation.
+
+8.1 Procedure contract standard
+First parameters: @CorrelationId uniqueidentifier and @IdempotencyKey nvarchar(100) where retry safety is required.
+Identifiers are business IDs, not RowId.
+Use SET NOCOUNT ON and SET XACT_ABORT ON.
+Validate authorization context before reading or changing private rows.
+Own the transaction for multi-table changes.
+Use explicit column lists for every INSERT and SELECT.
+Return one summary result set plus named logical child result sets documented in the C# client.
+Return application error code and safe message; log internal diagnostic details separately.
+Never return provider secrets or raw sensitive payloads to storefront clients.
+Write BusinessEvent and domain history in the same transaction as the state change.
+8.2 Example result/error model
+ResultCode         varchar(50)   -- success, not-found, conflict, invalid-state, unauthorizedResultMessage      nvarchar(500) -- safe for service logs or controlled displayEntityId           nvarchar(320) -- affected business IDRowVersion         binary(8)     -- returned for subsequent optimistic update
+
+9. Public read views
+View
+Read contract
+App.Site_List
+Active sites and public configuration.
+App.Catalog_ProductList
+Site-filtered product listing with min/max price and primary media.
+App.Catalog_ProductDetail
+Product-level content.
+App.Catalog_ProductVariantList
+Purchasable variants, option values, price, and fulfillment availability.
+App.Catalog_CategoryList
+Visible category tree.
+App.Cart_Detail
+Authorized cart header and line read model.
+App.Customer_Profile
+Authorized customer profile.
+App.Customer_AddressList
+Authorized reusable addresses.
+App.Customer_PetList
+Authorized pet profiles.
+App.Order_List
+Authorized customer order summaries or admin filtered list.
+App.Order_Detail
+Order header and immutable line/address snapshots.
+App.Subscription_List
+Authorized subscription summaries.
+App.Subscription_Detail
+Subscription schedule, items, address, safe payment display, and recent events.
+App.Payment_Summary
+Safe payment summary and transaction timeline.
+App.Fulfillment_Status
+Safe provider/tracking status.
+App.Admin_AuditEventList
+Owner/read-only administrative audit query.
+App.Admin_EmployeeRoleList
+Employee role assignments.
+
+Security note  A view does not automatically provide row-level customer authorization. Customer-specific views should normally be selected through stored procedures that validate session context, or protected with SQL row-level security if direct view selection is retained. Admin views may be safely granted to dedicated admin database identities.
+
+10. Critical workflows
+10.1 Guest purchase
+Create guest cart and return raw token to browser once; SQL stores only hash.
+Add active variants; estimate price.
+At checkout, collect email and immutable shipping/billing address fields.
+Order_CreateFromCart resolves current price, creates order snapshots, converts cart, inserts audit/outbox.
+Background worker creates the provider payment operation using an idempotency key.
+Webhook is stored in inbox, processed once, appends PaymentTransaction, and updates payment/order summary.
+Paid order is submitted to contracted fulfillment provider; provider statuses update Fulfillment.
+10.2 Account purchase
+Resolve account from validated Entra identity.
+Get or create site-specific active cart.
+Optionally merge a guest cart.
+Use saved or one-time address at checkout.
+Create the same ordinary SalesOrder used for guest purchase.
+Expose order history by CustomerRowId and validated session context.
+10.3 Subscription creation
+Require authenticated customer account.
+Require FirstName/LastName or recipient name, phone, valid shipping address, and active reusable provider payment method.
+Require at least one subscription-eligible active variant.
+Create subscription as draft, then activate after validation.
+Calculate NextProcessUtc and append SubscriptionActivated event.
+10.4 Subscription renewal
+Scheduler calls Subscription_ClaimDueBatch using short leases so multiple workers cannot process the same subscription concurrently.
+Create a deterministic RenewalKey from SubscriptionId and scheduled occurrence.
+Revalidate subscription, customer, address, payment method, site, product, variant, and fulfillment route.
+Reprice current recurring items and apply the current simple subscription discount.
+Create one ordinary SalesOrder and SalesOrderItems as immutable snapshots.
+Create Payment plus payment-request outbox message. No inventory reservation occurs.
+At the configured success point, usually successful authorization or capture, mark renewal successful and advance NextProcessUtc.
+On failure, retain the order/payment attempt, increase FailureCount, schedule retry, and append SubscriptionRenewalFailed.
+Success-point rule  The implementation must choose one renewal success point and apply it consistently. Capture is the simplest default for physical goods. If authorization is used, the order may proceed before capture only when the payment and fulfillment policy explicitly allows it.
+
+10.5 Webhook idempotency
+Verify provider signature in the API before database processing.
+Call Integration_InboxAccept with ProviderCode and ExternalMessageId.
+Rely on the unique constraint to decide whether this is new or duplicate.
+Process the claimed inbox row inside a bounded transaction.
+Append PaymentTransaction or Fulfillment update with provider identifiers protected by unique constraints.
+Mark inbox processed; duplicates return success without repeating side effects.
+10.6 Cart merge
+Lock guest and account carts in deterministic order.
+For matching variants, add quantities while respecting maximum policy.
+Move unique lines.
+Mark guest cart merged and point it to the surviving cart in JsonData or a dedicated MergedIntoCartRowId extension.
+Return the account cart read model.
+Make repeated merge requests return the same surviving cart.
+11. Auditing and historical integrity
+Use temporal history for mutable high-value summaries such as SalesOrder, Payment, Subscription, CustomerAddress, and Fulfillment where point-in-time reconstruction is valuable.
+Use domain-specific append-only histories for order statuses, payment transactions, and subscription events.
+Use BusinessEvent for actor, reason, source, correlation, and affected aggregate.
+Use InboxMessage and OutboxMessage for integration evidence and retry history.
+Deny runtime UPDATE and DELETE on append-oriented tables. Only App procedures insert rows.
+Do not place full card numbers, security codes, access tokens, secrets, or unnecessary personal information in audit JSON.
+Consider SQL Ledger later only if cryptographic tamper evidence is a contractual or regulatory requirement.
+11.1 BusinessEvent minimum content
+Field
+Example
+AggregateTypeCode
+order, payment, subscription, customer
+AggregateId
+ord-2026-000123
+EventTypeCode
+payment-captured
+ActorTypeCode
+customer, employee, system, provider
+ActorId
+normalized email or system worker ID
+ReasonCode
+customer-request, provider-failure, admin-correction
+CorrelationId
+API request correlation GUID
+EventDataJson
+Small event-specific before/after metadata
+CreatedUtc
+UTC event recording time
+
+12. Media and Azure Data Lake
+Binary images and video are not stored in SQL. ProductMedia stores references and metadata only. Storage paths should be stable, not signed URLs. The API creates time-limited access URLs or serves media through an approved CDN.
+/sites/{siteId}/products/{productId}/{variantId?}/{mediaId}/{fileName}
+
+MediaTypeCode distinguishes image, video, thumbnail, size-chart, and document.
+StorageUri is the canonical internal URI. PublicUrl should not be persisted when it is time-limited.
+AltText is required for customer-visible images.
+ProductVariantRowId is nullable so media can apply to the entire product or one variant.
+IsPrimary plus DisplaySequence controls presentation; a filtered unique index may enforce one primary media item per product/variant/media type.
+Deletion is archive-first. A background process may remove unreferenced blobs only after retention checks.
+13. Index strategy
+Table
+Required index
+Site
+UQ SiteId; UQ PrimaryHost.
+SiteProduct
+UQ SiteRowId + ProductRowId; IX SiteRowId + IsVisible + DisplaySequence.
+Product
+UQ ProductId; IX StatusCode + ModifiedUtc.
+ProductVariant
+UQ ProductVariantId; UQ Sku; IX ProductRowId + StatusCode.
+ProductMedia
+IX ProductRowId + ProductVariantRowId + DisplaySequence.
+Customer
+UQ CustomerId.
+CustomerIdentity
+UQ Issuer + Subject; IX CustomerRowId.
+CustomerAddress
+IX CustomerRowId + StatusCode.
+Cart
+UQ CartId; filtered UQ SiteRowId + CustomerRowId where active; IX GuestTokenHash + StatusCode; IX StatusCode + ExpiresUtc.
+CartItem
+UQ CartRowId + ProductVariantRowId.
+SalesOrder
+UQ SalesOrderId; UQ OrderNumber; IX CustomerRowId + PlacedUtc DESC; IX SiteRowId + OrderStatusCode + PlacedUtc.
+SalesOrderItem
+IX SalesOrderRowId.
+Subscription
+UQ SubscriptionId; IX StatusCode + NextProcessUtc; IX CustomerRowId + StatusCode.
+PaymentMethod
+UQ ProviderCode + ProviderPaymentMethodId; IX CustomerRowId + StatusCode.
+Payment
+UQ PaymentId; IX SalesOrderRowId.
+PaymentTransaction
+UQ PaymentTransactionId; filtered UQ ProviderCode + ProviderEventId; IX PaymentRowId + OccurredUtc.
+InboxMessage
+UQ ProviderCode + ExternalMessageId; IX StatusCode + ReceivedUtc.
+OutboxMessage
+IX StatusCode + CreatedUtc.
+BusinessEvent
+IX AggregateTypeCode + AggregateId + CreatedUtc; IX CorrelationId.
+
+Index names and included columns may be tuned after execution-plan review. Do not add broad indexes to every status or timestamp column without a demonstrated query.
+14. SQL project structure
+Commerce.Database/  Commerce.Database.sqlproj  Schemas/    App.sql    AppDbo.sql  AppDbo/    Tables/    Functions/    Types/  App/    StoredProcedures/      Customer/      Catalog/      Cart/      Order/      Subscription/      Payment/      Fulfillment/      Integration/      Admin/    Views/  Security/    Roles.sql    Grants.sql  Scripts/    PreDeployment.sql    PostDeployment.sql    Seed.Reference.sql  Publish/    Development.publish.xml    Test.publish.xml    Production.publish.xml
+
+
+Pin the Microsoft.Build.Sql version approved by the project at implementation time. Build with dotnet build and deploy the DACPAC with SqlPackage through CI/CD. Default globbing should include SQL files placed under the project folder.
+
+16. Testing and acceptance criteria
+16.1 Database build tests
+dotnet build produces a DACPAC with no unresolved references.
+All AppDbo tables have RowId, business ID, and JsonData.
+Every JsonData column has an ISJSON check.
+No App view or procedure accidentally exposes payment tokens or raw provider secrets.
+Runtime roles have no direct DML permissions on AppDbo.
+16.2 Domain integration tests
+Guest cart can be created, modified, converted, and expired.
+Authenticated cart can merge a guest cart repeatedly without duplicate lines.
+Order creation called twice with the same idempotency key returns the same order.
+Catalog price changes after purchase do not change SalesOrderItem snapshots.
+Subscription cannot activate without account, contact, address, payment method, and items.
+Two renewal workers cannot create two orders for one scheduled occurrence.
+Duplicate payment webhook does not create duplicate PaymentTransaction or capture totals.
+Failed renewal does not advance NextProcessUtc as though successful.
+Successful renewal creates a normal SalesOrder linked to SourceSubscriptionRowId.
+Customer cannot read another customer’s cart, order, address, payment summary, or subscription.
+Read-only employee cannot execute mutation procedures.
+Contributor cannot grant owner access.
+Retired variant remains visible in historical order data but cannot be newly purchased.
+16.3 Performance targets for initial implementation
+Operation
+Initial target under normal load
+Catalog list
+Single indexed query; paged; no N+1 database calls.
+Cart read/update
+One procedure call per command/read; optimistic conflict clearly reported.
+Order creation
+One bounded SQL transaction; no external HTTP call inside transaction.
+Subscription batch claim
+Batch size configurable; short lease; index seek on status + NextProcessUtc.
+Webhook acceptance
+Single insert attempt protected by unique constraint; fast acknowledgment.
+Customer order list
+Paged index seek by CustomerRowId + PlacedUtc.
+
+
+17. Deferred extensions
+Promotion and coupon rule engine.
+Sales tax detail and external tax-provider calculation records.
+Return merchandise authorization and item-level refund allocation.
+Gift cards and store credit ledger.
+Product reviews, wish lists, wait lists, and back-in-stock notifications.
+Multiple subscription shipping addresses or split fulfillments.
+Proration and metered recurring services.
+Inventory integration if contracted providers later expose trustworthy stock feeds.
+Data warehouse/reporting replication and customer analytics.
+SQL Ledger for cryptographic audit evidence.
+Appendix A. Status codes
+Domain
+Recommended initial codes
+Site
+draft, active, suspended, closed
+Product/Variant
+draft, active, inactive, retired
+Customer
+active, blocked, closed
+Cart
+active, converted, merged, abandoned, expired
+Order
+pending-payment, paid, submitted, processing, shipped, complete, cancelled
+Payment
+pending, requires-action, authorized, paid, partially-refunded, refunded, failed, voided, disputed
+Fulfillment
+not-submitted, submitted, accepted, processing, shipped, delivered, cancelled, failed
+Subscription
+draft, active, paused, payment-failed, cancelled, completed
+Inbox/Outbox
+received/pending, processing/publishing, processed/published, failed, ignored
+
+Appendix B. Reference notes
+The supplied MPV tables workbook was used as the baseline object list and expanded only where required for multi-site support, contracted fulfillment, employee roles, and implementation completeness.
+Microsoft Entra External ID OIDC claims mapping distinguishes the subject identifier from the email claim. This design therefore retains Issuer and Subject even though normalized email is the requested CustomerId.
+Stripe supports idempotency keys for safely retrying create/update operations, and its webhook guidance recommends guarding against processing an event twice. This design uses both request idempotency keys and unique provider event constraints.
+SQL projects aggregate SQL files and generate a DACPAC through dotnet build. This design uses that project format and a CI/CD deployment path.
+Appendix C. Source inventory from MPV tables.xlsx
+The following source objects were incorporated: catalog Product, ProductVariant, ProductOption, ProductOptionValue, ProductVariantOptionValue, ProductImage, Category, ProductCategory; customer Customer, CustomerIdentity, CustomerAddress, Pet; sales Cart, CartItem, Order, OrderItem, OrderAddress, OrderStatusHistory, OrderDiscount; subscription Subscription, SubscriptionItem, SubscriptionPet, SubscriptionEvent; payment PaymentMethod, Payment, PaymentTransaction; audit BusinessEvent; reference Country, Currency, UnitOfMeasure; integration InboxMessage and OutboxMessage.

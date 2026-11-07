@@ -1,0 +1,27 @@
+CREATE TABLE [AppDbo].[InboxMessage]
+(
+    [RowId] bigint IDENTITY(1,1) NOT NULL,
+    [InboxMessageId] nvarchar(50) NOT NULL,
+    [ProviderCode] nvarchar(50) NOT NULL,
+    [ExternalMessageId] nvarchar(200) NOT NULL,
+    [MessageTypeCode] nvarchar(100) NOT NULL,
+    [PayloadJson] varchar(max) NOT NULL,
+    [StatusCode] varchar(20) NOT NULL CONSTRAINT [DF_InboxMessage_StatusCode] DEFAULT ('received'),
+    [AttemptCount] int NOT NULL CONSTRAINT [DF_InboxMessage_AttemptCount] DEFAULT (0),
+    [ReceivedUtc] datetime2(3) NOT NULL CONSTRAINT [DF_InboxMessage_ReceivedUtc] DEFAULT (SYSUTCDATETIME()),
+    [ProcessedUtc] datetime2(3) NULL,
+    [LastError] nvarchar(max) NULL,
+    [LeaseToken] uniqueidentifier NULL,
+    [LeaseExpiresUtc] datetime2(3) NULL,
+    [CreatedUtc] datetime2(3) NOT NULL CONSTRAINT [DF_InboxMessage_CreatedUtc] DEFAULT (SYSUTCDATETIME()),
+    [ModifiedUtc] datetime2(3) NOT NULL CONSTRAINT [DF_InboxMessage_ModifiedUtc] DEFAULT (SYSUTCDATETIME()),
+    [RowVersion] rowversion NOT NULL,
+    [JsonData] varchar(max) NULL,
+    CONSTRAINT [PK_InboxMessage] PRIMARY KEY CLUSTERED ([RowId]),
+    CONSTRAINT [UQ_InboxMessage_InboxMessageId] UNIQUE NONCLUSTERED ([InboxMessageId]),
+    CONSTRAINT [CK_InboxMessage_BusinessId] CHECK (LEN(TRIM([InboxMessageId])) > 0),
+    CONSTRAINT [CK_InboxMessage_JsonData] CHECK ([JsonData] IS NULL OR ISJSON([JsonData]) = 1),
+    CONSTRAINT [CK_InboxMessage_PayloadJson] CHECK ([PayloadJson] IS NULL OR ISJSON([PayloadJson]) = 1),
+    CONSTRAINT [CK_InboxMessage_Rule1] CHECK (StatusCode IN ('received','processing','processed','failed','ignored')),
+    CONSTRAINT [CK_InboxMessage_Rule2] CHECK (AttemptCount >= 0)
+);

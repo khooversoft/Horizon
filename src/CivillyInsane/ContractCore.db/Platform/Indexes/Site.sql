@@ -1,0 +1,2 @@
+CREATE UNIQUE NONCLUSTERED INDEX [IX_Site_1] ON [AppDbo].[Site] (PrimaryHost);
+GO

@@ -1,0 +1,15 @@
+CREATE ROLE [app_api_publish] AUTHORIZATION [dbo];
+GO
+CREATE ROLE [app_api_admin] AUTHORIZATION [dbo];
+GO
+CREATE ROLE [app_worker] AUTHORIZATION [dbo];
+GO
+CREATE ROLE [app_deployer] AUTHORIZATION [dbo];
+GO
+DENY SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[AppDbo] TO [app_api_publish];
+GO
+DENY SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[AppDbo] TO [app_api_admin];
+GO
+DENY SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[AppDbo] TO [app_worker];
+GO
+GRANT EXECUTE ON SCHEMA::[App] TO [app_api_admin];

@@ -52,19 +52,4 @@ public static class Startup
         services.AddSingleton<IFileStore, InMemoryFileStore>();
         return services;
     }
-
-    public static IServiceCollection AddFileStoreNamespace(this IServiceCollection services, string fileNamespace, string key)
-    {
-        fileNamespace.NotEmpty();
-        StorePathTool.IsPathValid(fileNamespace).Assert(x => x, $"Invalid namespace path: {fileNamespace}");
-        key.NotEmpty();
-
-        services.AddKeyedSingleton<IFileStore>(key, (services, _) =>
-        {
-            var backingStore = services.GetRequiredService<IFileStore>();
-            return ActivatorUtilities.CreateInstance<FileStoreNamespace>(services, fileNamespace, backingStore);
-        });
-
-        return services;
-    }
 }
