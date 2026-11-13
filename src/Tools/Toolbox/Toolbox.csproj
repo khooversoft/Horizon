@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>c15872fa-f3bd-4477-943a-e0fef403f2be</UserSecretsId>
@@ -11,15 +11,15 @@
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.30.1" />
     <PackageReference Include="Azure.Storage.Files.DataLake" Version="12.28.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.13" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.13" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.14" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="11.0.0" />
   </ItemGroup>
 
 </Project>

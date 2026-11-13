@@ -55,35 +55,73 @@
   <Import Condition="'$(SQLDBExtensionsRefPath)' != ''" Project="$(SQLDBExtensionsRefPath)\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
   <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
   <ItemGroup>
-    <Folder Include="Properties" />
-    <Folder Include="Audit\" />
+    <Folder Include="Catalog\" />
+    <Folder Include="Catalog\Product\" />
+    <Folder Include="Catalog\Variant\" />
     <Folder Include="Customer\" />
-    <Folder Include="Fulfillment\" />
-    <Folder Include="Integration\" />
+    <Folder Include="Customer\Customer\" />
     <Folder Include="Payment\" />
-    <Folder Include="Platform\" />
-    <Folder Include="References\" />
+    <Folder Include="Payment\Payment\" />
+    <Folder Include="Properties" />
     <Folder Include="Sales\" />
+    <Folder Include="Sales\Order\" />
+    <Folder Include="Sales\OrderItem\" />
     <Folder Include="Security\" />
-    <Folder Include="Subscription\" />
+    <Folder Include="Shipping\" />
+    <Folder Include="Shipping\Shipment\" />
+    <Folder Include="Shipping\ShipmentItem\" />
+    <Folder Include="Shipping\TrackingEvent\" />
+    <Folder Include="Tools\" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Catalog" />
+    <Build Include="Catalog\Product\product-get.sql" />
+    <Build Include="Catalog\Product\product-list.sql" />
+    <Build Include="Catalog\Product\product-read.sql" />
+    <Build Include="Catalog\Product\product-save.sql" />
+    <Build Include="Catalog\Product\product.sql" />
+    <Build Include="Catalog\Variant\variant-get.sql" />
+    <Build Include="Catalog\Variant\variant-list.sql" />
+    <Build Include="Catalog\Variant\variant-read.sql" />
+    <Build Include="Catalog\Variant\variant-save.sql" />
+    <Build Include="Catalog\Variant\variant-stock-adjust.sql" />
+    <Build Include="Catalog\Variant\variant.sql" />
+    <Build Include="Customer\Customer\customer-get.sql" />
+    <Build Include="Customer\Customer\customer-list.sql" />
+    <Build Include="Customer\Customer\customer-read.sql" />
+    <Build Include="Customer\Customer\customer-save.sql" />
+    <Build Include="Customer\Customer\customer.sql" />
+    <Build Include="Payment\Payment\payment-get.sql" />
+    <Build Include="Payment\Payment\payment-list.sql" />
+    <Build Include="Payment\Payment\payment-read.sql" />
+    <Build Include="Payment\Payment\payment-save.sql" />
+    <Build Include="Payment\Payment\payment.sql" />
+    <Build Include="Sales\Order\order-get.sql" />
+    <Build Include="Sales\Order\order-list.sql" />
+    <Build Include="Sales\Order\order-read.sql" />
+    <Build Include="Sales\Order\order-save.sql" />
+    <Build Include="Sales\Order\order-status-set.sql" />
+    <Build Include="Sales\Order\order.sql" />
+    <Build Include="Sales\OrderItem\order_item.sql" />
+    <Build Include="Sales\OrderItem\order-item-add.sql" />
+    <Build Include="Sales\OrderItem\order-item-read.sql" />
+    <Build Include="Security\app.sql" />
+    <Build Include="Security\appdbo.sql" />
+    <Build Include="Security\Roles.sql" />
+    <Build Include="Shipping\Shipment\shipment-get.sql" />
+    <Build Include="Shipping\Shipment\shipment-list.sql" />
+    <Build Include="Shipping\Shipment\shipment-read.sql" />
+    <Build Include="Shipping\Shipment\shipment-save.sql" />
+    <Build Include="Shipping\Shipment\shipment.sql" />
+    <Build Include="Shipping\ShipmentItem\shipment_item.sql" />
+    <Build Include="Shipping\ShipmentItem\shipment-item-add.sql" />
+    <Build Include="Shipping\ShipmentItem\shipment-item-read.sql" />
+    <Build Include="Shipping\TrackingEvent\tracking_event.sql" />
+    <Build Include="Shipping\TrackingEvent\tracking-event-add.sql" />
+    <Build Include="Shipping\TrackingEvent\tracking-event-read.sql" />
   </ItemGroup>
   <ItemGroup>
-    <Build Include="Audit\**\*.sql" />
-    <Build Include="Catalog\**\*.sql" />
-    <Build Include="Customer\**\*.sql" />
-    <Build Include="Fulfillment\**\*.sql" />
-    <Build Include="Integration\**\*.sql" />
-    <Build Include="Payment\**\*.sql" />
-    <Build Include="Platform\**\*.sql" />
-    <Build Include="References\**\*.sql" />
-    <Build Include="Sales\**\*.sql" />
-    <Build Include="Security\**\*.sql" />
-    <Build Include="Subscription\**\*.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Format-SqlColumns.ps1" />
+    <None Include="Tools\DatabaseModel.ps1" />
+    <None Include="Tools\New-DatabaseObjects.ps1" />
+    <None Include="ContractCore.db.publish.xml" />
   </ItemGroup>
 </Project>

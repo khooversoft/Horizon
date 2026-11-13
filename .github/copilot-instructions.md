@@ -6,6 +6,7 @@
 ## Database Project Guidelines
 - Keep the existing Visual Studio SSDT format for database projects.
 - Do not use Python automation for database tasks.
-- Place stored procedures and views in the App schema.
+- Place stored procedures in the App schema (the database API).
+- Place views in the AppDbo schema.
 - Organize tables, indexes, procedures, and views by domain.
 - Include maintenance procedures and read views for every domain.

@@ -11,4 +11,6 @@
     <Build />
     <Deploy />
   </Project>
+  <Project Path="ContractCore.sdk.test/ContractCore.sdk.test.csproj" Id="2d1f1269-847c-49fc-b8e3-cf3f40c0db22" />
+  <Project Path="ContractCore.sdk/ContractCore.sdk.csproj" Id="542eda1c-3a42-4718-a1d4-71899aa5ebf3" />
 </Solution>
